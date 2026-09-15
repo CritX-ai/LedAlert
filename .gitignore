@@ -1,0 +1,44 @@
+# Rust build output and locally assembled release downloads.
+/target/
+/dist/
+/release-work/
+
+# Design, concept, planning, and local verification material are not product docs.
+/DESIGN.md
+/PRODUCT.md
+/PURPOSE.md
+/VERIFICATION.md
+/PLAN.md
+/PLANNING.md
+/CONCEPT.md
+/CONCEPTS.md
+/design/
+/concepts/
+/plans/
+/planning/
+/evidence/
+/verification/
+/screenshots/
+/.agents/
+/.omp/
+/.impeccable/
+
+# Local configuration, credentials, editor state, and runtime captures.
+/AGENTS.md
+/IMPORTANT.md
+/.env
+/.env.*
+/config.json
+*.ui.json
+*.log
+*.tmp
+*.swp
+*~
+/.idea/
+/.vscode/
+.DS_Store
+
+# Cargo.lock is intentionally tracked for this application.
+
+__pycache__/
+*.pyc

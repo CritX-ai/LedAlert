@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=LedAlert
+Comment=Place desktop notifications around your room with WLED
+Exec=ledalert
+Icon=io.github.critx.LedAlert
+Terminal=false
+Categories=Utility;
+Keywords=WLED;LED;notifications;room;
+StartupNotify=true
+StartupWMClass=io.github.critx.LedAlert
