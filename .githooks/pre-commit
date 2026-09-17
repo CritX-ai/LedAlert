@@ -1,6 +1,21 @@
 #!/bin/sh
-# Fast pre-commit gate mirroring the CI "distribution-metadata" job:
-# first-party license text and crates.io publication metadata must be present.
+# Fast pre-commit gate mirroring the CI "distribution-metadata" job, plus two
+# conditional checks: a full documentation build when documentation inputs are
+# staged, and a Cargo packaging sanity pass when crate inputs are staged.
+# Full release verification stays in pre-push and CI.
 set -e
 cd "$(git rev-parse --show-toplevel)"
+
 python3 packaging/verify.py --require-distribution
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+
+if printf '%s\n' "$staged" | grep -qE '^(README\.md|RELEASE\.md|CHANGELOG\.md|SECURITY\.md|docs/)'; then
+    echo "==> Documentation build (documentation inputs staged)"
+    python3 packaging/docs.py --container podman --base-url http://127.0.0.1:8766/ --output dist/docs
+fi
+
+if printf '%s\n' "$staged" | grep -qE '^(Cargo\.(toml|lock)|src/|tests/|assets/|packaging/)'; then
+    echo "==> Cargo package listing (crate inputs staged)"
+    cargo package --list --allow-dirty > /dev/null
+fi

@@ -1,5 +1,27 @@
 # LedAlert releases
 
+## 0.2.1 — Documentation and packaging
+
+The first follow-up release polishes how LedAlert reaches you. No native application behavior changed.
+
+### Highlights
+
+- **Install from anywhere:** `cargo install ledalert` now carries [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) metadata, so `cargo binstall ledalert --strategies crate-meta-data` fetches the official binary asset without a compiler. Install instructions no longer pin a version.
+- **A clearer manual:** release badges, platform and desktop-environment icons in the compatibility matrix, a rewritten [contribution policy](docs/roadmap.md#contribution-policy), and streamlined security reporting through GitHub's private vulnerability reporting.
+
+### Downloads and installation
+
+`cargo install ledalert --locked` installs this release from [crates.io](https://crates.io/crates/ledalert). Without a toolchain, download the binary archive and `SHA256SUMS` from the [0.2.1 release](https://github.com/CritX-ai/LedAlert/releases/tag/v0.2.1), then verify before extracting. Checksums detect changed bytes, not publisher identity; use a source you trust. The [installation guide](docs/guide/install.md) has both routes.
+
+| File | Contents |
+| --- | --- |
+| `ledalert-0.2.1-linux-x86_64.tar.gz` | Native app, offline documentation, assets, optional desktop launcher, build information and license notices. |
+| `ledalert-0.2.1-source.tar.gz` | Source, locked dependency manifest, tests, assets and documentation. |
+| `ledalert-0.2.1.crate` | Cargo package source, with cargo-binstall binary metadata. |
+| `SHA256SUMS` | SHA-256 checksums for the release assets. |
+
+Binary compatibility is unchanged from 0.2.0: **Linux x86_64, glibc 2.36 or newer**; see [Compatibility](docs/support.md).
+
 ## 0.2.0 — First public release
 
 Your notifications, mapped to your room. LedAlert brings a native Linux workbench for turning application notifications and participating media playback into spatial light on a WLED RGB strip.
@@ -14,7 +36,7 @@ Your notifications, mapped to your room. LedAlert brings a native Linux workbenc
 
 ### Downloads and installation
 
-`cargo install ledalert --version 0.2.0 --locked` installs the package from [crates.io](https://crates.io/crates/ledalert) (Rust **1.95+** and [native dependencies](docs/guide/install.md#native-dependencies) required). Without a toolchain, download the binary archive and `SHA256SUMS` from [GitHub Releases](https://github.com/CritX-ai/LedAlert/releases), then verify before extracting. Checksums detect changed bytes, not publisher identity; use a source you trust. The [installation guide](docs/guide/install.md) has both routes.
+`cargo install ledalert --locked` installs the package from [crates.io](https://crates.io/crates/ledalert) (Rust **1.95+** and [native dependencies](docs/guide/install.md#native-dependencies) required). Without a toolchain, download the binary archive and `SHA256SUMS` from [GitHub Releases](https://github.com/CritX-ai/LedAlert/releases), then verify before extracting. Checksums detect changed bytes, not publisher identity; use a source you trust. The [installation guide](docs/guide/install.md) has both routes.
 
 | File | Contents |
 | --- | --- |

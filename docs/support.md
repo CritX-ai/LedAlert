@@ -5,13 +5,16 @@ LedAlert's home turf is **Linux x86_64, KDE Plasma on Wayland, and one WLED RGB 
 ## Desktop
 
 <table class="support-matrix">
-<thead><tr><th scope="col">Your setup</th><th scope="col">Status</th></tr></thead>
+<thead><tr><th scope="col">Your desktop</th><th scope="col">Status</th></tr></thead>
 <tbody>
-<tr><th scope="row">KDE Plasma on Wayland<small>Linux x86_64; desktop notifications, lock detection and media markers.</small></th><td><span class="support-status supported"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m7 12 3 3 7-7"/></svg>Supported</span></td></tr>
-<tr><th scope="row">Automatic display placement<small>KDE's kscreen-doctor is optional. You can place displays manually.</small></th><td><span class="support-status supported"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m7 12 3 3 7-7"/></svg>Supported</span></td></tr>
-<tr><th scope="row">Pinned-app suggestions and icons<small>Reads local Plasma launcher metadata. Manual rules and text-only tiles remain available.</small></th><td><span class="support-status supported"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m7 12 3 3 7-7"/></svg>Supported</span></td></tr>
-<tr><th scope="row">Other Linux desktops and X11<small>Complete notification and lock integration is unverified.</small></th><td><span class="support-status unverified"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4m0 3h.01"/></svg>Unverified</span></td></tr>
-<tr><th scope="row">Windows and macOS<small>No desktop backends are implemented.</small></th><td><span class="support-status unavailable"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6m0-6-6 6"/></svg>Unsupported</span></td></tr>
+<tr><th scope="row"><span class="platform-mark"><img src="site/assets/icons/kde.svg" alt="" width="20" height="20"></span>KDE Plasma on Wayland<small>Linux x86_64, the primary target. Display discovery, pinned-app suggestions, desktop notifications, lock detection and media markers.</small></th><td><span class="support-status supported"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m7 12 3 3 7-7"/></svg>Supported</span></td></tr>
+<tr><th scope="row"><span class="platform-mark"><img src="site/assets/icons/kde.svg" alt="" width="20" height="20"></span>KDE Plasma on X11<small>LedAlert runs as a normal X11 client; the full integration is unverified.</small></th><td><span class="support-status unverified"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4m0 3h.01"/></svg>Unverified</span></td></tr>
+<tr><th scope="row"><span class="platform-mark"><img src="site/assets/icons/gnome.svg" alt="" width="20" height="20"></span>GNOME<small>Standard notification and lock services; manual display placement replaces KDE discovery.</small></th><td><span class="support-status unverified"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4m0 3h.01"/></svg>Unverified</span></td></tr>
+<tr><th scope="row"><span class="platform-mark"><img src="site/assets/icons/xfce.svg" alt="" width="20" height="20"></span>Xfce</th><td><span class="support-status unverified"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4m0 3h.01"/></svg>Unverified</span></td></tr>
+<tr><th scope="row"><span class="platform-mark"><img src="site/assets/icons/cinnamon.svg" alt="" width="20" height="20"></span>Cinnamon</th><td><span class="support-status unverified"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4m0 3h.01"/></svg>Unverified</span></td></tr>
+<tr><th scope="row"><span class="platform-mark"><img src="site/assets/icons/linux.svg" alt="" width="20" height="20"></span>Other Linux desktops<small>MATE, Budgie, LXQt and others use the same standard notification and lock services; they are unverified.</small></th><td><span class="support-status unverified"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 2-2.5 2-2.5 4m0 3h.01"/></svg>Unverified</span></td></tr>
+<tr><th scope="row"><span class="platform-mark"><img src="site/assets/icons/windows.svg" alt="" width="20" height="20"></span>Windows<small>No desktop backend is implemented.</small></th><td><span class="support-status unavailable"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6m0-6-6 6"/></svg>Unsupported</span></td></tr>
+<tr><th scope="row"><span class="platform-mark"><img src="site/assets/icons/apple.svg" alt="" width="20" height="20"></span>macOS<small>No desktop backend is implemented.</small></th><td><span class="support-status unavailable"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6m0-6-6 6"/></svg>Unsupported</span></td></tr>
 </tbody>
 </table>
 
@@ -30,6 +33,8 @@ Notifications must use the freedesktop notification service. In-app-only message
 </table>
 
 Use a trusted local network and one realtime controller. WLED needs HTTP **80** for connection and UDP **4048** for RGB output. LedAlert does not change persistent WLED settings; the device's own limits and realtime timeout still apply.
+
+Your setup is not listed? See the [roadmap](roadmap.md#future-directions) for where support is headed and the [contribution policy](roadmap.md#contribution-policy) for how to land it — verified additions from real environments are exactly what we want.
 
 ## Before you install
 

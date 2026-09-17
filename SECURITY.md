@@ -4,13 +4,9 @@ LedAlert is for ambient awareness, not safety alarms. Use WLED on a trusted loca
 
 ## Reporting a suspected vulnerability
 
-**Arrange a private channel before sharing vulnerability details.**
+**Report privately through GitHub's vulnerability reporting:** [Security → Report a vulnerability](https://github.com/CritX-ai/LedAlert/security/advisories/new). Never disclose vulnerability details in a public issue.
 
-- If **Security → Report a vulnerability** is available in the repository and explicitly marked private, use it.
-- Otherwise, [open an issue](https://github.com/CritX-ai/LedAlert/issues) asking only for confidential contact. Wait for an agreed private route before sending details.
-- Keep credentials, personal configurations, LAN addresses, notification text and raw traces out of public reports. Use synthetic data and devices you own or have permission to test.
-
-Privately share the LedAlert version, OS and desktop, reproduction steps, expected and actual behavior, and potential impact. Remove personal data from attachments.
+Privately share the LedAlert version, OS and desktop, reproduction steps, expected and actual behavior, and potential impact. Keep credentials, personal configurations, LAN addresses, notification text and raw traces out of attachments, and use synthetic data with devices you own or have permission to test.
 
 ## Response and disclosure
 

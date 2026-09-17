@@ -349,8 +349,11 @@ def prepare(stage: Path, manifest: dict, url: str) -> None:
                 require(bool(heading["id"]), f"Search heading requires an HTML ID in {source}: {heading['title']}")
                 title, destination = heading["title"], path + "#" + quote(heading["id"], safe="")
             search.append({"title": title, "page_title": page["title"], "path": destination, "text": text})
+    cargo = tomllib.loads(source_file("Cargo.toml").read_text(encoding="utf-8"))
+    require(cargo["package"]["name"] == "ledalert" and cargo["package"]["version"], "Missing Cargo package version")
     write_json(stage / "content/en/site.yaml", {
         "canonical_domain": "alert.critx.ai", "release_label": manifest["release_label"],
+        "version": cargo["package"]["version"],
         "preview": preview, "search_index_path": site_root + "search-index.json",
         "groups": [{"title": title, "items": items} for title, items in groups.items()]})
     config = source_file("docs/site/regen.toml").read_text(encoding="utf-8")

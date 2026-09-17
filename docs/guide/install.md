@@ -6,10 +6,23 @@ You do not need a strip to draw a room and try local rule demos. Lighting starts
 
 ## Install with Cargo
 
+### Download a binary with cargo-binstall
+
+[cargo-binstall](https://github.com/cargo-bins/cargo-binstall#installation) downloads the official release binary instead of compiling. It reads LedAlert's release metadata and fetches only GitHub release assets — no third-party mirrors, no surprise compilation:
+
+```sh
+cargo binstall ledalert --strategies crate-meta-data
+ledalert --version
+```
+
+Only the **Linux x86_64** binary is published; other targets report a download error. Binary metadata ships with the crate starting with 0.2.1 and cannot serve older versions.
+
+### Compile with cargo install
+
 Install [Rust](https://rustup.rs/) (**1.95 or newer**) and the [native dependencies](#native-dependencies), then:
 
 ```sh
-cargo install ledalert --version 0.2.0 --locked
+cargo install ledalert --locked
 ledalert
 ```
 
@@ -17,25 +30,25 @@ If `ledalert` is not found, add `~/.cargo/bin` to your `PATH`. To install from a
 
 ## Download a release bundle
 
-No compiler needed. From the **0.2.0** release on [GitHub Releases](https://github.com/CritX-ai/LedAlert/releases), download into a new directory:
+No compiler needed. From the latest release on [GitHub Releases](https://github.com/CritX-ai/LedAlert/releases), download into a new directory:
 
-- **`ledalert-0.2.0-linux-x86_64.tar.gz`** — the prebuilt native application.
+- **`ledalert-<version>-linux-x86_64.tar.gz`** — the prebuilt native application.
 - **`SHA256SUMS`** — the release checksums.
 
 The binary needs **glibc 2.36 or newer**. Check `BUILD-INFO.json` inside the bundle against your system if unsure.
 
 ### Verify, extract and run
 
-In the directory containing both downloads, run this chain. It checks the selected archive and launches only if verification and extraction succeed:
+In the directory containing both downloads, run this chain. It checks the archive and launches only if verification and extraction succeed:
 
 ```sh
-grep '  ledalert-0\.2\.0-linux-x86_64\.tar\.gz$' SHA256SUMS | sha256sum --check --strict - &&
-tar -xzf ledalert-0.2.0-linux-x86_64.tar.gz &&
-cd ledalert-0.2.0-linux-x86_64 &&
+grep '  ledalert-.*-linux-x86_64\.tar\.gz$' SHA256SUMS | sha256sum --check --strict - &&
+tar -xzf ledalert-*-linux-x86_64.tar.gz &&
+cd ledalert-*-linux-x86_64 &&
 ./bin/ledalert
 ```
 
-**Expected result:** `ledalert-0.2.0-linux-x86_64.tar.gz: OK`, followed by the native room setup with lighting off.
+**Expected result:** `ledalert-<version>-linux-x86_64.tar.gz: OK`, followed by the native room setup with lighting off.
 
 **If verification fails**, download both files again from the same release and retry; do not bypass the check. Checksums detect changed bytes, not publisher identity — use a source you trust.
 
@@ -73,12 +86,12 @@ cargo build --release --locked
 ./target/release/ledalert
 ```
 
-If you need a source archive, download **`ledalert-0.2.0-source.tar.gz`** and **`SHA256SUMS`** from the same [0.2.0 release](https://github.com/CritX-ai/LedAlert/releases). Verify before extracting and building — expect `ledalert-0.2.0-source.tar.gz: OK`:
+If you need a source archive, download **`ledalert-<version>-source.tar.gz`** and **`SHA256SUMS`** from the same release. Verify before extracting and building — expect `ledalert-<version>-source.tar.gz: OK`:
 
 ```sh
-grep '  ledalert-0\.2\.0-source\.tar\.gz$' SHA256SUMS | sha256sum --check --strict - &&
-tar -xzf ledalert-0.2.0-source.tar.gz &&
-cd ledalert-0.2.0-source &&
+grep '  ledalert-.*-source\.tar\.gz$' SHA256SUMS | sha256sum --check --strict - &&
+tar -xzf ledalert-*-source.tar.gz &&
+cd ledalert-*-source &&
 cargo build --release --locked &&
 ./target/release/ledalert
 ```
@@ -100,9 +113,9 @@ KDE display discovery uses `kscreen-doctor` from `libkscreen`; without it, use *
 
 | File | Purpose |
 | --- | --- |
-| `ledalert-0.2.0-linux-x86_64.tar.gz` | Native executable, offline manual and notices. |
-| `ledalert-0.2.0-source.tar.gz` | Source, locked dependency manifest, tests, assets and packaging instructions. |
-| `ledalert-0.2.0.crate` | Cargo package source — what `cargo install ledalert` fetches. |
+| `ledalert-<version>-linux-x86_64.tar.gz` | Native executable, offline manual and notices. |
+| `ledalert-<version>-source.tar.gz` | Source, locked dependency manifest, tests, assets and packaging instructions. |
+| `ledalert-<version>.crate` | Cargo package source — what `cargo install ledalert` fetches. |
 | `SHA256SUMS` | SHA-256 checksums for all three assets. |
 
 The binary bundle includes `bin/ledalert`, the field manual, release notes, `SECURITY.md`, logo/font assets, an optional desktop launcher, `BUILD-INFO.json`, `LICENSE-MIT`, `LICENSE-APACHE`, `THIRD-PARTY-NOTICES.txt` and `licenses/`.

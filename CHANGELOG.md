@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1 — Documentation and packaging
+
+- cargo-binstall metadata in the Cargo package; official binary assets install via `cargo binstall ledalert --strategies crate-meta-data`.
+- Version-agnostic install instructions; release badges and platform/desktop icons in the compatibility documentation.
+- Contribution policy requiring demonstrably verified feature additions, and simplified private security reporting through GitHub.
+- No native application behavior changes; binary compatibility is unchanged from 0.2.0.
+
 ## 0.2.0 — First public release
 
 - Native Linux room editor with rectangular and optional custom outlines, display placement and spatial WLED strip mapping.

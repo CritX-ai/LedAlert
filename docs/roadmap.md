@@ -4,7 +4,7 @@ LedAlert's job is simple: give desktop events a useful place in your room. Futur
 
 ## Current status
 
-**0.2.0 is the first public release**, built for Linux x86_64, KDE Plasma on Wayland and one mapped WLED RGB strip. Room outlines, spatial rules, local previews and explicit lighting controls are available now. See [release notes](../RELEASE.md) and [Compatibility](support.md).
+**Version 0.2 is the first public release**, built for Linux x86_64, KDE Plasma on Wayland and one mapped WLED RGB strip. Room outlines, spatial rules, local previews and explicit lighting controls are available now. See [release notes](../RELEASE.md) and [Compatibility](support.md).
 
 ## Future directions
 
@@ -16,16 +16,20 @@ These are possibilities, **not implemented features or delivery promises**:
 - **Matrices:** explore grid mapping and orientation as a later addition; current strip mapping is not first-class matrix support.
 - **macOS:** investigate a supported event source before considering a port. An editor that opens is not equivalent to notification support.
 
-No dates are promised. Current [compatibility limits](support.md) still apply.
+Current [compatibility limits](support.md) still apply.
 
-## Taking a task
+## Contribution policy
 
-Want to help a notification find its place?
+LedAlert accepts **feature additions that are demonstrably verified** in the environment they target. We do not merge partial implementations, and routine fixes are not a contribution path — reproducible bug reports through [issues](https://github.com/CritX-ai/LedAlert/issues) are the way to flag defects.
 
-1. [Open or join an issue](https://github.com/CritX-ai/LedAlert/issues). Describe the user problem, your proposed change and the environment you can use.
-2. Agree on the scope before starting a large feature or platform port. Small fixes, clearer instructions and reproducible bug reports are welcome too.
-3. Keep pull requests focused. Explain what users will notice and what you exercised; distinguish real hardware observations from simulations.
-4. Use synthetic notifications in screenshots and examples. Leave personal configurations, device addresses and private logs out of public reports. Hardware work needs the device owner's permission.
+**Unsupported environment? You are the right person to change that.** If your desktop, display server, or WLED setup is not covered yet, implement the support, test it on your own setup, and send a pull request with evidence. This applies to the unverified desktops in [Compatibility](support.md), additional lighting layouts, and platform ports.
+
+Requirements for a merged contribution:
+
+1. **Complete, end-to-end work.** A change must be usable and testable by a reader of the manual. Stubs, scaffolds, and half-wired behavior are declined.
+2. **Evidence from the target environment.** Show real execution on the hardware or desktop the feature claims to support: session and WLED behavior, before/after captures, and the checks you ran. Source-level reasoning alone does not verify a feature.
+3. **Agreed scope.** Open an issue describing the user problem, your environment and your approach before starting a platform port or lighting-layout work; large unrequested refactors are declined.
+4. **Boundaries respected.** Real-lighting work needs the device owner's consent. Keep personal notification content, device addresses and private logs out of public reports.
 
 For a suspected vulnerability, use [security reporting](../SECURITY.md) rather than a public bug report containing sensitive details.
 

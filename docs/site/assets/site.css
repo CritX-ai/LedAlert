@@ -143,6 +143,9 @@ td:first-child { color: var(--amber); }
 .support-status.supported { color: var(--cyan); }
 .support-status.unverified { color: var(--amber); }
 .support-status.unavailable { color: var(--muted); }
+.platform-mark { display: inline-flex; margin-right: 10px; color: var(--muted); }
+.platform-mark img { display: inline-block; width: 20px; height: 20px; border: 0; margin: 0; background: none; }
+.prose img[src*="img.shields.io"], .prose img[src*="badge.svg"] { display: inline-block; width: auto; height: 20px; vertical-align: middle; }
 .page-rail { padding: 36px 22px 0 0; font-size: .78rem; }
 .page-rail nav { margin-bottom: 32px; }
 .page-rail h2 { color: var(--muted); font-size: .8rem; font-weight: 650; margin: 0 0 16px; }
