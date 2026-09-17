@@ -24,7 +24,7 @@ MARKER = re.compile(r"<!-- ledalert-release:(\{[^\n]+\}) -->")
 
 
 def request(url: str, *, data: bytes | None = None, method: str = "GET",
-            missing: bool = False, content_type: str = "application/json") -> bytes | None:
+            missing: bool = False, content_type: str = "application/json", timeout: int = 60) -> bytes | None:
     headers = {"User-Agent": "LedAlert-release", "Accept": "application/vnd.github+json",
                "X-GitHub-Api-Version": "2022-11-28", "Content-Type": content_type}
     if url.startswith((API + "/", f"https://uploads.github.com/repos/{REPOSITORY}/")):
@@ -32,7 +32,7 @@ def request(url: str, *, data: bytes | None = None, method: str = "GET",
         if token:
             headers["Authorization"] = "Bearer " + token
     try:
-        with urlopen(Request(url, data=data, headers=headers, method=method), timeout=60) as response:
+        with urlopen(Request(url, data=data, headers=headers, method=method), timeout=timeout) as response:
             payload = response.read(8 * 1024 * 1024 + 1)
             verify.require(len(payload) <= 8 * 1024 * 1024, "Remote metadata exceeds 8 MiB")
             return payload
@@ -47,6 +47,18 @@ def github(path: str, *, payload: dict | None = None, method: str = "GET", missi
     body = request(API + path, data=release.json_bytes(payload) if payload is not None else None,
                    method=method, missing=missing)
     return None if body is None else json.loads(body)
+
+def release_record(version: str) -> dict | None:
+    tag = f"v{version}"
+    record = github(f"/releases/tags/{tag}", missing=True)
+    if record is not None:
+        return record
+    # GitHub hides drafts from the tag endpoint until publication. The release
+    # list is newest first, so an interrupted release draft is on its first page.
+    records = github("/releases?per_page=100")
+    matches = [candidate for candidate in records if candidate.get("tag_name") == tag]
+    verify.require(len(matches) <= 1, "Multiple GitHub releases have the same version tag")
+    return matches[0] if matches else None
 
 
 def registry_version(version: str) -> dict | None:
@@ -121,7 +133,7 @@ def context(commit: str) -> str:
 
 
 def preflight(version: str, commit: str) -> bool:
-    record = github(f"/releases/tags/v{version}", missing=True)
+    record = release_record(version)
     target = tag_commit(f"v{version}")
     entry = registry_version(version)
     ready = True
@@ -172,7 +184,7 @@ def local_receipt(output: Path, version: str, commit: str) -> dict:
 
 def publish_github(output: Path, version: str, commit: str) -> None:
     value = local_receipt(output, version, commit)
-    record = github(f"/releases/tags/v{version}", missing=True)
+    record = release_record(version)
     target = tag_commit(f"v{version}")
     verify.require(target in {None, commit}, "Release tag already belongs to another commit")
     entry = registry_version(version)
@@ -192,7 +204,8 @@ def publish_github(output: Path, version: str, commit: str) -> None:
         for name in release.release_names(version, True):
             if name not in existing:
                 request(f"https://uploads.github.com/repos/{REPOSITORY}/releases/{record['id']}/assets?name={name}",
-                        method="POST", data=(output / name).read_bytes(), content_type="application/octet-stream")
+                        method="POST", data=(output / name).read_bytes(), content_type="application/octet-stream",
+                        timeout=900)
         record = github(f"/releases/{record['id']}")
         inspect_assets(record, value["sha256"], complete=True)
         record = github(f"/releases/{record['id']}", method="PATCH", payload={"draft": False})

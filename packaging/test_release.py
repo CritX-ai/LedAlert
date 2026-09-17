@@ -166,6 +166,14 @@ class PublicationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             publication.preflight("0.2.0", self.commit)
 
+    def test_hidden_draft_is_recovered_from_release_list(self):
+        self.registry_version.return_value = None
+        draft = {**self.record, "draft": True, "assets": self.record["assets"][:-1]}
+        self.github.side_effect = [None, [draft]]
+        self.assertTrue(publication.preflight("0.2.0", self.commit))
+        self.assertEqual(self.github.call_args_list[0].args, ("/releases/tags/v0.2.0",))
+        self.assertEqual(self.github.call_args_list[1].args, ("/releases?per_page=100",))
+
     def test_missing_assets_can_resume_only_in_an_unpublished_draft(self):
         self.registry_version.return_value = None
         self.record["assets"].pop()
@@ -186,6 +194,13 @@ class PublicationTests(unittest.TestCase):
         with patch.object(publication, "urlopen", side_effect=HTTPError(url, 403, "forbidden", {}, None)):
             with self.assertRaises(ValueError):
                 publication.request(url, missing=True)
+
+    def test_upload_request_uses_a_long_response_timeout(self):
+        url = "https://uploads.github.com/repos/CritX-ai/LedAlert/releases/1/assets?name=ledalert.crate"
+        with patch.object(publication, "urlopen") as opening:
+            opening.return_value.__enter__.return_value.read.return_value = b""
+            publication.request(url, timeout=900)
+        self.assertEqual(opening.call_args.kwargs["timeout"], 900)
 
     def test_local_snapshot_cannot_be_published_as_a_commit(self):
         with tempfile.TemporaryDirectory(prefix="ledalert-local-publication-") as temporary:
