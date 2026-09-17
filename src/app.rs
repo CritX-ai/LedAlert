@@ -2,6 +2,7 @@ mod applications;
 mod demos;
 mod effects;
 mod manipulate;
+mod outline;
 mod rules;
 mod runtime;
 mod scene;
@@ -14,8 +15,8 @@ use widgets::{Action, Icon, decimal_parser, distance_slider};
 
 use crate::{
     config::{
-        Config, DeviceConfig, EffectKind, GradientStop, MAX_LEDS, MAX_POINTS, MAX_RULES,
-        MAX_SCREENS, NotificationMode, Point, RangeUnit, Rule, RuleOptions, Screen,
+        Config, DeviceConfig, EffectKind, GradientStop, MAX_LEDS, MAX_POINTS, MAX_ROOM_VERTICES,
+        MAX_RULES, MAX_SCREENS, NotificationMode, Point, RangeUnit, Rule, RuleOptions, Screen,
     },
     desktop::{DesktopMonitor, DesktopState, NotificationEvent},
     displays::{self, DetectedDisplay},
@@ -37,7 +38,8 @@ use eframe::egui::{
 use std::{
     collections::HashMap,
     path::PathBuf,
-    sync::mpsc,
+    sync::{Arc, Mutex, mpsc},
+    thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
 
@@ -91,6 +93,12 @@ struct DisplayDrag {
 }
 
 pub struct LedAlertApp {
+    state: Arc<Mutex<AppState>>,
+    stop: mpsc::SyncSender<()>,
+    worker: Option<JoinHandle<()>>,
+}
+
+struct AppState {
     identity: Identity,
     preferences: Preferences,
     preferences_path: PathBuf,
@@ -126,6 +134,7 @@ pub struct LedAlertApp {
     snap_rotation: bool,
     placing_walls: bool,
     placement_open: bool,
+    outline_editor: outline::OutlineEditor,
     selected_walls: Vec<usize>,
     config: Config,
     saved: Option<Config>,
@@ -141,6 +150,7 @@ pub struct LedAlertApp {
     selected_rule: usize,
     enabled: bool,
     quiet: bool,
+    notification_gate: runtime::NotificationGate,
     desktop: DesktopMonitor,
     desktop_state: DesktopState,
     desktop_poll: Instant,
@@ -163,8 +173,8 @@ pub struct LedAlertApp {
     confirm_close: bool,
 }
 
-impl LedAlertApp {
-    pub fn new(ctx: &egui::Context, path: PathBuf) -> anyhow::Result<Self> {
+impl AppState {
+    fn new(ctx: &egui::Context, path: PathBuf) -> anyhow::Result<Self> {
         let identity = Identity::install(ctx)?;
         let (config, saved, load_error) = if path.exists() {
             match Config::load(&path) {
@@ -242,7 +252,8 @@ impl LedAlertApp {
             snap_rotation: true,
             placing_walls: false,
             placement_open,
-            selected_walls: Vec::with_capacity(4),
+            outline_editor: outline::OutlineEditor::default(),
+            selected_walls: Vec::with_capacity(MAX_ROOM_VERTICES),
             history: EditorHistory::new(config.clone(), address.clone()),
             engine: Engine::new(&config)?,
             preview: Engine::new(&config)?,
@@ -259,6 +270,7 @@ impl LedAlertApp {
             selected_rule: 0,
             enabled: false,
             quiet: false,
+            notification_gate: runtime::NotificationGate::new(Instant::now()),
             desktop,
             desktop_state,
             desktop_poll: Instant::now(),
@@ -312,7 +324,13 @@ impl LedAlertApp {
     fn changed(&mut self) {
         self.notice.clear();
         self.stop_demos();
+        let was_invalid = self.validation_error.is_some();
         self.validation_error = self.config.validate().err().map(|e| e.to_string());
+        if was_invalid || self.validation_error.is_some() {
+            // An invalid draft can be fixed between producer ticks. Fence queued
+            // notifications at both editor transitions, not just at the next tick.
+            self.notification_gate.discard_before(Instant::now());
+        }
         if self.inspector == Inspector::Displays {
             self.auto_import = false;
         }
@@ -347,6 +365,8 @@ impl LedAlertApp {
         self.display_drag = None;
         self.orbit_origin = None;
         self.placing_walls = false;
+        self.selected_walls.clear();
+        self.outline_editor.cancel_drag();
         if state.config.device != self.config.device || state.address != self.address {
             self.connected = None;
             self.probe_error = None;
@@ -471,14 +491,22 @@ impl LedAlertApp {
             return;
         };
         let n = self.config.room.screens.len() + 1;
+        let mut position = Point {
+            x: self.config.room.width / 2.0,
+            y: self.config.room.depth / 2.0,
+            z: self.config.room.height / 2.0,
+        };
+        if !self.config.room.contains_floor(position)
+            && let Some(mesh) = self.config.room.floor_mesh()
+        {
+            let [a, b, c] = mesh.triangles[0].map(|i| mesh.vertices[i]);
+            position.x = (a.x + b.x + c.x) / 3.0;
+            position.y = (a.y + b.y + c.y) / 3.0;
+        }
         self.config.room.screens.push(Screen {
             id,
             name: format!("Screen {n}"),
-            position: Point {
-                x: self.config.room.width / 2.0,
-                y: self.config.room.depth / 2.0,
-                z: self.config.room.height / 2.0,
-            },
+            position,
             width: 0.7,
             angle: 0.0,
             connector: None,
@@ -555,7 +583,7 @@ impl LedAlertApp {
             {
                 if i > 0
                     && i + 1 < self.config.room.strip.len()
-                    && self.config.room.strip[i - 1].distance(self.config.room.strip[i + 1]) < 0.01
+                    && !self.config.room.strip[i - 1].separated_from(self.config.room.strip[i + 1])
                 {
                     self.notify("Keep this bend: its neighbouring points would overlap.");
                     return;
@@ -576,7 +604,7 @@ impl LedAlertApp {
         let Some(pair) = self.config.room.strip.get(index..index.saturating_add(2)) else {
             return;
         };
-        if pair.len() != 2 || point.distance(pair[0]) < 0.01 || point.distance(pair[1]) < 0.01 {
+        if pair.len() != 2 || !point.separated_from(pair[0]) || !point.separated_from(pair[1]) {
             return;
         }
         if self.config.room.strip.len() >= MAX_POINTS {
@@ -984,7 +1012,10 @@ impl LedAlertApp {
         let mut replay = false;
         let mut preferences_changed = false;
         egui::Window::new("Settings").open(&mut open).resizable(false).show(ctx,|ui|{
-            if ui.checkbox(&mut self.quiet,"Quiet mode").changed() && self.quiet {self.stop_guidance(StopReason::Quiet);}
+            if ui.checkbox(&mut self.quiet,"Quiet mode").changed() {
+                self.notification_gate.discard_before(Instant::now());
+                if self.quiet {self.stop_guidance(StopReason::Quiet);}
+            }
             ui.checkbox(&mut self.config.reduced_motion,"Reduced motion");
             ui.checkbox(&mut self.config.notifications_enabled,"Desktop notifications");
             ui.checkbox(&mut self.config.media_enabled,"Media playback");
@@ -1021,11 +1052,25 @@ impl LedAlertApp {
 }
 
 impl eframe::App for LedAlertApp {
-    fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.tick(ctx);
-    }
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        self.state
+            .lock()
+            .expect("Application state lock poisoned")
+            .ui(ui);
+    }
+}
+
+impl AppState {
+    fn ui(&mut self, ui: &mut egui::Ui) {
         let ctx = ui.ctx().clone();
+        self.poll_gui(&ctx);
+        // The setup mark is UI-only; it need not accelerate physical output ticks.
+        if self.guide
+            && !self.config.reduced_motion
+            && self.guide_started.elapsed() < Duration::from_millis(600)
+        {
+            ctx.request_repaint_after(Duration::from_millis(16));
+        }
         ctx.global_style_mut(|style| {
             style.animation_time = if self.config.reduced_motion {
                 0.0
@@ -1055,6 +1100,7 @@ impl eframe::App for LedAlertApp {
             self.display_drag = None;
             self.orbit_origin = None;
             self.placing_walls = false;
+            self.outline_editor.cancel_drag();
             self.history.finish_group();
         }
         egui::Panel::top("toolbar")

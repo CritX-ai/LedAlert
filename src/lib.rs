@@ -5,6 +5,7 @@ pub mod config;
 pub mod desktop;
 pub mod displays;
 pub mod engine;
+pub mod footprint;
 pub mod guidance;
 pub mod history;
 pub mod identity;

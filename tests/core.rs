@@ -57,7 +57,9 @@ fn invalid_save_preserves_previous_config_and_roundtrip_is_exact() {
     config.rules[0].screen_id = 999;
     assert!(config.save(&path).is_err());
     assert_eq!(std::fs::read(&path).unwrap(), original);
-    std::fs::write(&path, br#"{"version":99}"#).unwrap();
+    let mut future = serde_json::to_value(Config::default()).unwrap();
+    future["version"] = serde_json::json!(3);
+    std::fs::write(&path, serde_json::to_vec(&future).unwrap()).unwrap();
     assert!(Config::load(&path).is_err());
 }
 
@@ -297,6 +299,7 @@ fn advanced_rules_filter_triggers_and_bound_steady_notification_output() {
 fn saved_first_release_rooms_keep_their_rendering_when_loaded() {
     let config = two_screen_config();
     let mut old = serde_json::to_value(&config).unwrap();
+    old["version"] = serde_json::json!(1);
     old["room"].as_object_mut().unwrap().remove("led_anchors");
     for screen in old["room"]["screens"].as_array_mut().unwrap() {
         screen.as_object_mut().unwrap().remove("connector");
@@ -307,8 +310,11 @@ fn saved_first_release_rooms_keep_their_rendering_when_loaded() {
     }
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("old.json");
-    std::fs::write(&path, serde_json::to_vec(&old).unwrap()).unwrap();
+    let original = serde_json::to_vec(&old).unwrap();
+    std::fs::write(&path, &original).unwrap();
     let loaded = Config::load(&path).unwrap();
+    assert_eq!(std::fs::read(&path).unwrap(), original);
+    assert_eq!(loaded, config);
     let mut before = Engine::new(&config).unwrap();
     let mut after = Engine::new(&loaded).unwrap();
     let now = Instant::now();
@@ -319,4 +325,160 @@ fn saved_first_release_rooms_keep_their_rendering_when_loaded() {
         after.render(now + Duration::from_millis(300), false)
     );
     assert!(after.frame()[50][0] > 0);
+}
+
+#[test]
+fn version_one_migration_preserves_allocations_and_only_explicit_save_upgrades_the_file() {
+    let mut expected = Config::default();
+    expected.room.reverse = true;
+    expected.room.led_anchors = vec![0, 7, 120, 599];
+    expected.rules[0].options.position = Some(0.37);
+    let mut old = serde_json::to_value(&expected).unwrap();
+    old["version"] = serde_json::json!(1);
+    let original = serde_json::to_vec(&old).unwrap();
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("setup.json");
+    std::fs::write(&path, &original).unwrap();
+    let loaded = Config::load(&path).unwrap();
+    assert_eq!(loaded, expected);
+    assert_eq!(std::fs::read(&path).unwrap(), original);
+    assert_eq!(
+        Engine::new(&loaded).unwrap().positions(),
+        Engine::new(&expected).unwrap().positions()
+    );
+    loaded.save(&path).unwrap();
+    let saved: serde_json::Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    assert_eq!(saved["version"], 2);
+    assert!(saved["room"].get("outline").is_none());
+    assert_eq!(Config::load(&path).unwrap(), expected);
+}
+
+#[test]
+fn unsupported_versions_and_version_one_outlines_are_rejected_without_rewriting() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("setup.json");
+    let mut value = serde_json::to_value(Config::default()).unwrap();
+    for version in [0, 3, u32::MAX] {
+        value["version"] = serde_json::json!(version);
+        let bytes = serde_json::to_vec(&value).unwrap();
+        std::fs::write(&path, &bytes).unwrap();
+        assert!(Config::load(&path).is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    }
+    value["version"] = serde_json::json!(1);
+    value["room"]["outline"] = serde_json::json!([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]);
+    let bytes = serde_json::to_vec(&value).unwrap();
+    std::fs::write(&path, &bytes).unwrap();
+    assert!(Config::load(&path).is_err());
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    value["room"]["outline"] = serde_json::json!([]);
+    std::fs::write(&path, serde_json::to_vec(&value).unwrap()).unwrap();
+    assert_eq!(Config::load(&path).unwrap(), Config::default());
+}
+
+#[test]
+fn concave_config_validation_checks_whole_segments_and_display_anchors_before_saving() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("setup.json");
+    let mut config = Config::default();
+    config.room.width = 10.0;
+    config.room.depth = 10.0;
+    config.room.screens[0].position = Point {
+        x: 2.0,
+        y: 2.0,
+        z: 1.0,
+    };
+    config.room.strip = vec![
+        Point {
+            x: 8.0,
+            y: 2.0,
+            z: 1.0,
+        },
+        Point {
+            x: 2.0,
+            y: 8.0,
+            z: 1.0,
+        },
+    ];
+    config.save(&path).unwrap();
+    let rectangle = std::fs::read(&path).unwrap();
+    config.room.outline = vec![
+        [0.0, 0.0],
+        [1.0, 0.0],
+        [1.0, 0.4],
+        [0.4, 0.4],
+        [0.4, 1.0],
+        [0.0, 1.0],
+    ];
+    assert!(
+        config
+            .room
+            .strip
+            .iter()
+            .all(|&point| config.room.contains_floor(point))
+    );
+    assert!(config.save(&path).is_err());
+    assert_eq!(std::fs::read(&path).unwrap(), rectangle);
+    config.room.strip[1].y = 2.0;
+    config.save(&path).unwrap();
+    assert_eq!(Config::load(&path).unwrap(), config);
+    let concave = std::fs::read(&path).unwrap();
+    config.room.screens[0].position = Point {
+        x: 8.0,
+        y: 8.0,
+        z: 1.0,
+    };
+    assert!(config.save(&path).is_err());
+    assert_eq!(std::fs::read(&path).unwrap(), concave);
+    config.room.screens[0].position = Point {
+        x: 2.0,
+        y: 2.0,
+        z: 1.0,
+    };
+    config.room.outline.reverse();
+    assert!(config.save(&path).is_err());
+    assert_eq!(std::fs::read(&path).unwrap(), concave);
+}
+
+#[test]
+fn shape_only_changes_preserve_led_sampling_order_and_application_routing() {
+    for reverse in [false, true] {
+        for explicit_allocation in [false, true] {
+            let mut config = two_screen_config();
+            config.room.reverse = reverse;
+            config.room.strip.insert(
+                1,
+                Point {
+                    x: 1.0,
+                    y: 0.0,
+                    z: 1.0,
+                },
+            );
+            if explicit_allocation {
+                config.room.led_anchors = vec![0, 7, 50];
+            }
+            let mut engine = Engine::new(&config).unwrap();
+            let positions = engine.positions().to_vec();
+            let now = Instant::now();
+            assert!(engine.notify("MAIL", 1, now, now, None));
+            let frame = engine
+                .render(now + Duration::from_millis(300), false)
+                .to_vec();
+            config.room.outline = vec![
+                [0.0, 0.0],
+                [1.0, 0.0],
+                [1.0, 0.4],
+                [0.4, 0.4],
+                [0.4, 1.0],
+                [0.0, 1.0],
+            ];
+            engine.configure(&config).unwrap();
+            assert_eq!(engine.positions(), positions);
+            assert!(engine.notify("MAIL", 1, now, now, None));
+            assert_eq!(
+                engine.render(now + Duration::from_millis(300), false),
+                frame
+            );
+        }
+    }
 }

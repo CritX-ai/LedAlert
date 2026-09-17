@@ -1,0 +1,71 @@
+name: Documentation build and manual Pages deployment
+
+# Publication prerequisites are owner-managed: Pages configured for Actions
+# and the alert.critx.ai custom domain/DNS.
+# Normal pushes and pull requests build only. This workflow changes no settings.
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy this default-branch build to GitHub Pages
+        type: boolean
+        required: true
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: docs-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.event_name == 'pull_request' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Read the triggering source without retained credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1; ReGen 1.1.0 deployment example
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ github.sha }}
+      - name: Install Markdown preparation dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends --yes pandoc
+      - name: Build pull-request preview only
+        if: github.event_name == 'pull_request'
+        run: python3 packaging/docs.py --container docker --base-url https://preview.invalid/LedAlert/ --output dist/docs
+      - name: Build production-URL documentation without publishing
+        if: github.event_name != 'pull_request'
+        run: python3 packaging/docs.py --container docker --output dist/docs
+      - name: Upload only generated documentation
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0; ReGen 1.1.0 deployment example
+        with:
+          path: dist/docs
+          name: github-pages
+          retention-days: 1
+          include-hidden-files: false
+
+  deploy:
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy == true && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy explicitly requested default-branch artifact
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1; ReGen 1.1.0 deployment example
+        with:
+          artifact_name: github-pages

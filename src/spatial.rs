@@ -212,9 +212,9 @@ fn valid_room_dimensions(room: &Room) -> bool {
 }
 
 /// Route along ordered, unique adjacent walls at a fixed room height.
-/// Corners run (0,0), (width,0), (width,depth), (0,depth); walls are
-/// 0 Back, 1 Right, 2 Front, 3 Left. A single wall follows that corner order.
-/// Multiple walls follow the selected direction; all four close the perimeter.
+/// Rectangle corners retain (0,0), (width,0), (width,depth), (0,depth):
+/// walls 0 Back, 1 Right, 2 Front, 3 Left. Outlines follow their stored corner order.
+/// A single wall follows that order; selecting every wall closes the perimeter.
 pub fn wall_path(room: &Room, walls: &[usize], height: f32) -> Result<Vec<Point>> {
     ensure!(
         valid_room_dimensions(room),
@@ -224,55 +224,43 @@ pub fn wall_path(room: &Room, walls: &[usize], height: f32) -> Result<Vec<Point>
         height.is_finite() && (0.0..=room.height).contains(&height),
         "Wall route height must be within the room"
     );
-    ensure!((1..=4).contains(&walls.len()), "Select one to four walls");
-    let mut selected = 0u8;
+    room.validate_outline()?;
+    let count = room.wall_count();
+    ensure!(
+        (1..=count).contains(&walls.len()),
+        "Select between one and {count} walls"
+    );
+    let mut selected = 0u16;
     for &wall in walls {
-        ensure!(wall < 4, "Wall indices must be between 0 and 3");
-        let bit = 1u8 << wall;
+        ensure!(wall < count, "Wall index is outside the room outline");
+        let bit = 1u16 << wall;
         ensure!(selected & bit == 0, "Each wall may be selected only once");
         selected |= bit;
     }
     let step = if walls.len() == 1 {
         1
     } else {
-        (walls[1] + 4 - walls[0]) % 4
+        (walls[1] + count - walls[0]) % count
     };
-    ensure!(step == 1 || step == 3, "Selected walls must be adjacent");
     ensure!(
-        walls.windows(2).all(|pair| (pair[0] + step) % 4 == pair[1]),
+        step == 1 || step == count - 1,
+        "Selected walls must be adjacent"
+    );
+    ensure!(
+        walls
+            .windows(2)
+            .all(|pair| (pair[0] + step) % count == pair[1]),
         "Selected walls must follow a continuous direction"
     );
-    let corners = [
-        Point {
-            x: 0.0,
-            y: 0.0,
-            z: height,
-        },
-        Point {
-            x: room.width,
-            y: 0.0,
-            z: height,
-        },
-        Point {
-            x: room.width,
-            y: room.depth,
-            z: height,
-        },
-        Point {
-            x: 0.0,
-            y: room.depth,
-            z: height,
-        },
-    ];
     let start = if step == 1 {
         walls[0]
     } else {
-        (walls[0] + 1) % 4
+        (walls[0] + 1) % count
     };
     let mut path = Vec::with_capacity(walls.len() + 1);
-    path.push(corners[start]);
+    path.push(room.corner(start, height));
     for &wall in walls {
-        path.push(corners[if step == 1 { (wall + 1) % 4 } else { wall }]);
+        path.push(room.corner(if step == 1 { (wall + 1) % count } else { wall }, height));
     }
     Ok(path)
 }

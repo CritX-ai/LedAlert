@@ -1,0 +1,52 @@
+{
+  "release_label": "Linux · KDE Plasma · WLED",
+  "templates": ["page.html"],
+  "pages": [
+    {"source": "README.md", "id": "index", "path": "/", "title": "LedAlert", "description": "Give desktop notifications a place in your room with a native Linux workbench for WLED lighting.", "group": "Start here", "kicker": "Spatial desktop notifications"},
+    {"source": "docs/guide/install.md", "id": "guide/install", "path": "/guide/install/", "title": "Install and connect", "description": "Install LedAlert with Cargo or a verified binary download.", "group": "Set up your room", "kicker": "01 · Install"},
+    {"source": "docs/guide/room.md", "id": "guide/room", "path": "/guide/room/", "title": "Draw your room", "description": "Set room dimensions and use optional bounded room outlines.", "group": "Set up your room", "kicker": "02 · Room"},
+    {"source": "docs/guide/displays.md", "id": "guide/displays", "path": "/guide/displays/", "title": "Place your displays", "description": "Discover or manually arrange the displays that anchor your notification positions.", "group": "Set up your room", "kicker": "03 · Displays"},
+    {"source": "docs/guide/strip.md", "id": "guide/strip", "path": "/guide/strip/", "title": "Map your strip", "description": "Trace one WLED RGB strip, set its direction and understand LED allocation.", "group": "Set up your room", "kicker": "04 · Strip"},
+    {"source": "docs/guide/rules.md", "id": "guide/rules", "path": "/guide/rules/", "title": "Route your applications", "description": "Choose application rules, notification effects and media markers.", "group": "Set up your room", "kicker": "05 · Rules"},
+    {"source": "docs/guide/operations.md", "id": "guide/operations", "path": "/guide/operations/", "title": "Run and save", "description": "Control lighting, save your room and keep a backup.", "group": "Use LedAlert", "kicker": "Daily operation"},
+    {"source": "docs/guide/troubleshooting.md", "id": "guide/troubleshooting", "path": "/guide/troubleshooting/", "title": "Troubleshoot by symptom", "description": "Find the next check when something is not working.", "group": "Use LedAlert", "kicker": "Find the next check"},
+    {"source": "docs/reference.md", "id": "reference", "path": "/reference/", "title": "Technical reference", "description": "A closer look at editing, lighting and saved settings.", "group": "Reference", "kicker": "Behavior and boundaries"},
+    {"source": "docs/reference-editing.md", "id": "reference/editing", "path": "/reference/editing/", "title": "Editing and rule behavior", "description": "Room geometry, display and LED anchors, rule matching, palettes and keyboard controls.", "group": "Reference", "kicker": "Editing reference"},
+    {"source": "docs/reference-runtime.md", "id": "reference/runtime", "path": "/reference/runtime/", "title": "Lighting and integrations", "description": "Lighting permissions, local demos, real-LED guidance, desktop observation and WLED transport.", "group": "Reference", "kicker": "Runtime reference"},
+    {"source": "docs/reference-configuration.md", "id": "reference/configuration", "path": "/reference/configuration/", "title": "Saved setups and diagnostics", "description": "Saved files, limits, diagnostics and recovery.", "group": "Reference", "kicker": "Configuration reference"},
+    {"source": "docs/support.md", "id": "support", "path": "/support/", "title": "Compatibility", "description": "Find out whether your desktop and lights are a match.", "group": "Reference", "kicker": "Supported setups"},
+    {"source": "docs/roadmap.md", "id": "roadmap", "path": "/roadmap/", "title": "Roadmap", "description": "What LedAlert does today and where it could go next.", "group": "Project", "kicker": "What's next"},
+    {"source": "RELEASE.md", "id": "releases", "path": "/releases/", "title": "Release notes", "description": "What's new in LedAlert 0.2.0, how to install it and which systems it supports.", "group": "Project", "kicker": "Release status"},
+    {"source": "CHANGELOG.md", "id": "changelog", "path": "/changelog/", "title": "Changelog", "description": "Features, fixes and configuration changes by version.", "group": "Project", "kicker": "Change history"},
+    {"source": "SECURITY.md", "id": "security", "path": "/security/", "title": "Security", "description": "Report a security issue without sharing private data.", "group": "Project", "kicker": "Report responsibly"}
+  ],
+  "assets": [
+    {"source": "docs/site/assets/site.css", "path": "site.css"},
+    {"source": "docs/site/assets/site.js", "path": "site.js"}
+  ],
+  "media": [
+    {"source": "docs/site/assets/fonts/silkscreen-bold.ttf", "path": "fonts/silkscreen-bold.ttf"},
+    {"source": "docs/site/assets/fonts/saira.woff2", "path": "fonts/saira.woff2"},
+    {"source": "docs/site/assets/favicon.svg", "path": "favicon.svg"},
+    {"source": "docs/site/assets/mascots/idle.png", "path": "mascots/idle.png"},
+    {"source": "docs/site/assets/mascots/salute.png", "path": "mascots/salute.png"},
+    {"source": "docs/site/assets/mascots/alert.png", "path": "mascots/alert.png"},
+    {"source": "docs/site/assets/screenshots/overview.png", "path": "screenshots/overview.png"},
+    {"source": "docs/site/assets/screenshots/room.png", "path": "screenshots/room.png"},
+    {"source": "docs/site/assets/screenshots/outline.png", "path": "screenshots/outline.png"},
+    {"source": "docs/site/assets/screenshots/strip.png", "path": "screenshots/strip.png"},
+    {"source": "docs/site/assets/screenshots/rules.png", "path": "screenshots/rules.png"},
+    {"source": "docs/site/assets/screenshots/notifications.png", "path": "screenshots/notifications.png"},
+    {"source": "docs/site/assets/screenshots/notifications.mp4", "path": "screenshots/notifications.mp4"},
+    {"source": "docs/site/assets/screenshots/notifications.webm", "path": "screenshots/notifications.webm"},
+    {"source": "docs/site/assets/screenshots/overlap.png", "path": "screenshots/overlap.png"},
+    {"source": "docs/site/assets/screenshots/overlap.mp4", "path": "screenshots/overlap.mp4"},
+    {"source": "docs/site/assets/screenshots/overlap.webm", "path": "screenshots/overlap.webm"},
+    {"source": "LICENSE-MIT", "path": "licenses/ledalert-mit.txt"},
+    {"source": "LICENSE-APACHE", "path": "licenses/ledalert-apache.txt"},
+    {"source": "packaging/io.github.critx.LedAlert.svg", "path": "ledalert.svg"},
+    {"source": "assets/fonts/OFL.txt", "path": "licenses/silkscreen-ofl.txt"},
+    {"source": "docs/site/assets/fonts/silkscreen-OFL.txt", "path": "fonts/silkscreen-ofl.txt"},
+    {"source": "docs/site/assets/fonts/saira-OFL.txt", "path": "fonts/saira-ofl.txt"}
+  ]
+}

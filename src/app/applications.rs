@@ -35,7 +35,7 @@ impl AppVisual {
     }
 }
 
-impl LedAlertApp {
+impl AppState {
     pub(super) fn queue_application(&mut self, id: &str) {
         if id == "*" || id.is_empty() || id.len() > 128 || self.application_assets.contains_key(id)
         {

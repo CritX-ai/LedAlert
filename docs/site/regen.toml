@@ -1,0 +1,19 @@
+# packaging/docs.py supplies temporary YAML content and an optional preview URL.
+# ReGen remains responsible for templates, routes, assets and site generation.
+[site]
+title = "LedAlert"
+base_url = "https://alert.critx.ai/"
+default_language = "en"
+
+[[languages]]
+code = "en"
+name = "English"
+
+[build]
+profile = "release"
+
+# Preserve authored output across ReGen installations with different features.
+[build.minify]
+html = false
+css = false
+js = false

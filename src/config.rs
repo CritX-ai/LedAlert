@@ -13,6 +13,8 @@ pub const MAX_LEDS: usize = 8192;
 pub const MAX_SCREENS: usize = 16;
 pub const MAX_POINTS: usize = 64;
 pub const MAX_RULES: usize = 128;
+pub const MAX_ROOM_VERTICES: usize = 12;
+pub const CURRENT_CONFIG_VERSION: u32 = 2;
 const MAX_CONFIG_BYTES: u64 = 256 * 1024;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -41,6 +43,9 @@ pub struct Room {
     pub width: f32,
     pub depth: f32,
     pub height: f32,
+    /// Empty retains the rectangular room; otherwise normalized counterclockwise corners.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub outline: Vec<[f32; 2]>,
     pub screens: Vec<Screen>,
     /// Vertices in physical LED order, from LED 0 to the last LED.
     pub strip: Vec<Point>,
@@ -62,6 +67,25 @@ impl Point {
     pub fn distance(self, other: Self) -> f32 {
         ((self.x - other.x).powi(2) + (self.y - other.y).powi(2) + (self.z - other.z).powi(2))
             .sqrt()
+    }
+    /// At least one centimetre apart, allowing only f32 coordinate roundoff.
+    /// Shared by outline/strip validation and editing so a legal wall can be routed.
+    pub fn separated_from(self, other: Self) -> bool {
+        let a = [self.x, self.y, self.z].map(f64::from);
+        let b = [other.x, other.y, other.z].map(f64::from);
+        let squared: f64 = (0..3).map(|i| (a[i] - b[i]).powi(2)).sum();
+        let minimum = f64::from(0.01_f32);
+        if !squared.is_finite() {
+            return false;
+        }
+        if squared >= minimum * minimum {
+            return true;
+        }
+        let rounding: f64 = (0..3)
+            .filter(|&i| a[i] != b[i])
+            .map(|i| (2.0 * f64::from(f32::EPSILON) * a[i].abs().max(b[i].abs())).powi(2))
+            .sum();
+        squared.sqrt() + rounding.sqrt() >= minimum
     }
     pub fn lerp(self, other: Self, t: f32) -> Self {
         Self {
@@ -172,7 +196,7 @@ fn default_aspect() -> f32 {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            version: 1,
+            version: CURRENT_CONFIG_VERSION,
             device: DeviceConfig {
                 address: Ipv4Addr::LOCALHOST,
                 led_count: 600,
@@ -181,6 +205,7 @@ impl Default for Config {
                 width: 5.0,
                 depth: 4.0,
                 height: 2.5,
+                outline: Vec::new(),
                 screens: vec![Screen {
                     id: 1,
                     name: "Main screen".into(),
@@ -257,7 +282,7 @@ impl DeviceConfig {
 impl Config {
     pub fn validate(&self) -> Result<()> {
         ensure!(
-            self.version == 1,
+            self.version == CURRENT_CONFIG_VERSION,
             "Unsupported configuration version {}",
             self.version
         );
@@ -272,6 +297,7 @@ impl Config {
                 "{name} must be 0.5–50 metres"
             );
         }
+        self.room.validate_outline()?;
         ensure!(
             self.brightness.is_finite() && (0.0..=1.0).contains(&self.brightness),
             "Brightness must be between 0 and 100%"
@@ -317,16 +343,16 @@ impl Config {
         for &point in &self.room.strip {
             self.validate_point(point)?;
         }
-        let mut length = 0.0;
         for pair in self.room.strip.windows(2) {
-            let segment = pair[0].distance(pair[1]);
             ensure!(
-                segment >= 0.01,
+                self.room.contains_floor_segment(pair[0], pair[1]),
+                "A strip segment leaves the room footprint; move it or reshape the room"
+            );
+            ensure!(
+                pair[0].separated_from(pair[1]),
                 "Adjacent strip points must be at least 1 cm apart"
             );
-            length += segment;
         }
-        ensure!(length >= 0.01, "The strip path cannot be empty");
         ensure!(
             self.rules.len() <= MAX_RULES,
             "At most {MAX_RULES} application rules are supported"
@@ -395,9 +421,7 @@ impl Config {
             "Positions must be finite numbers"
         );
         ensure!(
-            (0.0..=self.room.width).contains(&p.x)
-                && (0.0..=self.room.depth).contains(&p.y)
-                && (0.0..=self.room.height).contains(&p.z),
+            self.room.contains_floor(p) && (0.0..=self.room.height).contains(&p.z),
             "A position is outside the room; move it or enlarge the room"
         );
         Ok(())
@@ -428,7 +452,16 @@ impl Config {
             bytes.len() as u64 <= MAX_CONFIG_BYTES,
             "Configuration exceeds 256 KiB"
         );
-        let config: Self = serde_json::from_slice(&bytes).context("Invalid configuration JSON")?;
+        let mut config: Self =
+            serde_json::from_slice(&bytes).context("Invalid configuration JSON")?;
+        if config.version == 1 {
+            ensure!(
+                config.room.outline.is_empty(),
+                "Version 1 configurations cannot contain a room outline"
+            );
+            // Migration is in memory only: placements, allocations and rules stay untouched.
+            config.version = CURRENT_CONFIG_VERSION;
+        }
         config.validate()?;
         Ok(config)
     }

@@ -1,6 +1,6 @@
 use super::*;
 
-impl LedAlertApp {
+impl AppState {
     pub(super) fn rule_controls(&mut self, ui: &mut egui::Ui) {
         ui.spacing_mut().button_padding = Vec2::splat(5.0);
         ui.spacing_mut().interact_size.y = 28.0;

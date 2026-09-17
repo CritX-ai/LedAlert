@@ -9,7 +9,7 @@ pub(super) enum DemoMode {
     Random,
 }
 
-impl LedAlertApp {
+impl AppState {
     pub(super) fn remember_connection(&mut self) {
         let address = self.config.device.address;
         if self.connected.is_some()

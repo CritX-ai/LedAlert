@@ -1,6 +1,6 @@
 use super::*;
 
-impl LedAlertApp {
+impl AppState {
     pub(super) fn persist_preferences(&mut self) {
         if let Err(error) = self.preferences.save(&self.preferences_path) {
             self.notify(format!("Guide preference not saved: {error}"));
@@ -36,6 +36,7 @@ impl LedAlertApp {
         self.display_drag = None;
         self.orbit_origin = None;
         self.placing_walls = false;
+        self.outline_editor.cancel_drag();
         self.selection = match (step, self.selection) {
             (Inspector::Displays, Some(Selection::Screen(i))) => Some(Selection::Screen(i)),
             (Inspector::Strip, Some(Selection::Point(i))) => Some(Selection::Point(i)),
@@ -211,22 +212,38 @@ impl LedAlertApp {
     }
 
     pub(super) fn room_controls(&mut self, ui: &mut egui::Ui) {
-        ui.heading("Room shape");
+        ui.heading("Room");
         ui.add_space(10.0);
-        ui.horizontal(|ui| {
-            for (label, ratio) in [("Square", 1.0_f32), ("Wide", 1.5), ("Long", 0.67)] {
-                if shape_button(
-                    ui,
-                    label,
-                    ratio,
-                    (self.config.room.width / self.config.room.depth - ratio).abs() < 0.04,
-                )
-                .clicked()
-                {
-                    self.resize_room(5.0 * ratio, 5.0, self.config.room.height);
+        if self.config.room.outline.is_empty() {
+            ui.horizontal(|ui| {
+                for (label, ratio) in [("Square", 1.0_f32), ("Wide", 1.5), ("Long", 0.67)] {
+                    if shape_button(
+                        ui,
+                        label,
+                        ratio,
+                        (self.config.room.width / self.config.room.depth - ratio).abs() < 0.04,
+                    )
+                    .clicked()
+                    {
+                        self.resize_room(5.0 * ratio, 5.0, self.config.room.height);
+                    }
                 }
-            }
-        });
+            });
+        } else {
+            ui.label(format!(
+                "Custom outline · {} corners",
+                self.config.room.wall_count()
+            ));
+        }
+        ui.add_space(10.0);
+        if ui.add(Action::new(Icon::Wall, "Choose a footprint or edit its outline. Existing displays and strip positions stay where they are.")
+            .label("Room shape…").selected(self.outline_editor.open)).clicked() {
+            self.outline_editor.open = !self.outline_editor.open;
+            self.outline_editor.cancel_drag();
+        }
+        if self.outline_editor.open {
+            self.outline_controls(ui);
+        }
         ui.add_space(12.0);
         egui::CollapsingHeader::new("Measurements").show(ui, |ui| {
             let (mut w, mut d, mut h) = (
@@ -246,7 +263,7 @@ impl LedAlertApp {
             {
                 self.resize_room(w, d, h);
             }
-        }).header_response.on_hover_text("Drag edges for width, depth and height, or enter values in metres. Both 1.25 and 1,25 are accepted. Middle-drag to orbit.");
+        }).header_response.on_hover_text("Width, depth and height resize the whole setup proportionally. Outline edits keep placements unchanged. Both 1.25 and 1,25 metres are accepted. Middle-drag to orbit.");
     }
 
     fn display_controls(&mut self, ui: &mut egui::Ui) {

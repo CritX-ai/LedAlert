@@ -1,0 +1,20 @@
+#!/bin/sh
+# Pre-push release gate mirroring .github/workflows/release.yml exactly.
+# A push to main runs the production documentation build and the container
+# verification (including the publishable Cargo package) before publishing
+# to GitHub Releases and crates.io. Blocking the push on the same checks
+# keeps a failing CI run from interrupting an in-flight publication.
+#
+# This is deliberately heavy: it runs the digest-pinned ReGen container and
+# the Debian 12 verification baseline. Skip only with `git push --no-verify`,
+# knowing CI will still enforce all of it.
+set -e
+cd "$(git rev-parse --show-toplevel)"
+
+echo "==> Production documentation build (pinned ReGen container)"
+python3 packaging/docs.py --container podman --output dist/docs
+
+echo "==> Source, artifact and Cargo package verification (pinned baseline)"
+python3 packaging/release.py --verify --crate --commit "$(git rev-parse HEAD)" --output "$(mktemp -d dist/release-verify.XXXXXX)"
+
+echo "==> Release gate passed"

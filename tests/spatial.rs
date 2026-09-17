@@ -1,6 +1,7 @@
 use eframe::egui::{Pos2, Rect, Vec2};
 use ledalert::{
-    config::{Config, Point},
+    config::{Config, MAX_ROOM_VERTICES, Point, Room},
+    footprint::FloorMesh,
     spatial::{
         DEFAULT_PITCH, DEFAULT_YAW, Projection, closest_on_segment, project_screen_galley,
         screen_corners, wall_path,
@@ -607,4 +608,314 @@ fn segment_selection_clamps_to_endpoints_and_handles_degenerate_segments() {
     let (t, distance) = closest_on_segment(Pos2::ZERO, Pos2::new(-1e30, 0.0), Pos2::new(1e30, 0.0));
     close(t, 0.5);
     close(distance, 0.0);
+}
+
+const CONCAVE_OUTLINE: [[f32; 2]; 6] = [
+    [0.0, 0.0],
+    [1.0, 0.0],
+    [1.0, 0.4],
+    [0.4, 0.4],
+    [0.4, 1.0],
+    [0.0, 1.0],
+];
+const DOUBLE_NOTCH_OUTLINE: [[f32; 2]; 12] = [
+    [0.0, 0.0],
+    [1.0, 0.0],
+    [1.0, 1.0],
+    [0.8, 1.0],
+    [0.8, 0.4],
+    [0.6, 0.4],
+    [0.6, 1.0],
+    [0.4, 1.0],
+    [0.4, 0.4],
+    [0.2, 0.4],
+    [0.2, 1.0],
+    [0.0, 1.0],
+];
+
+fn outlined_room(outline: &[[f32; 2]]) -> Room {
+    let mut room = Config::default().room;
+    room.width = 10.0;
+    room.depth = 10.0;
+    room.outline = outline.to_vec();
+    room
+}
+
+fn floor_point(x: f32, y: f32) -> Point {
+    Point { x, y, z: 0.0 }
+}
+
+#[test]
+fn centimetre_outline_walls_remain_valid_when_routed_as_a_strip() {
+    let mut config = Config {
+        room: outlined_room(&[
+            [0.0, 0.0],
+            [0.5, 0.0],
+            [0.501, 0.0],
+            [1.0, 0.0],
+            [1.0, 1.0],
+            [0.0, 1.0],
+        ]),
+        ..Config::default()
+    };
+    config.room.validate_outline().unwrap();
+    let walls: Vec<_> = (0..config.room.wall_count()).collect();
+    config.room.strip = wall_path(&config.room, &walls, 1.0).unwrap();
+    config.validate().unwrap();
+}
+
+#[test]
+fn concave_floor_includes_boundaries_but_checks_every_interval_of_a_segment() {
+    let room = outlined_room(&CONCAVE_OUTLINE);
+    for (point, inside) in [
+        (floor_point(2.0, 8.0), true),
+        (floor_point(8.0, 2.0), true),
+        (floor_point(4.0, 4.0), true),
+        (floor_point(4.0, 10.0), true),
+        (floor_point(8.0, 8.0), false),
+        (floor_point(-0.001, 2.0), false),
+        (floor_point(f32::NAN, 2.0), false),
+    ] {
+        assert_eq!(room.contains_floor(point), inside, "{point:?}");
+    }
+    for (a, b, contained) in [
+        ((8.0, 2.0), (2.0, 8.0), false),
+        ((10.0, 4.0), (4.0, 10.0), false),
+        ((8.0, 0.0), (0.0, 8.0), true), // tangent at the reflex corner
+        ((10.0, 4.0), (0.0, 4.0), true), // boundary followed by interior
+        ((4.0, 4.0), (4.0, 10.0), true),
+        ((4.0, 4.0), (4.0, 4.0), true),
+        ((8.0, 8.0), (8.0, 8.0), false),
+    ] {
+        let a = floor_point(a.0, a.1);
+        let b = floor_point(b.0, b.1);
+        assert_eq!(room.contains_floor_segment(a, b), contained, "{a:?}–{b:?}");
+        assert_eq!(room.contains_floor_segment(b, a), contained, "{b:?}–{a:?}");
+    }
+    let notches = outlined_room(&DOUBLE_NOTCH_OUTLINE);
+    let a = floor_point(1.0, 8.0);
+    let b = floor_point(9.0, 8.0);
+    assert!(notches.contains_floor(a));
+    assert!(notches.contains_floor(b));
+    assert!(notches.contains_floor(a.lerp(b, 0.5)));
+    assert!(!notches.contains_floor_segment(a, b));
+    let narrow_notch = outlined_room(&[
+        [0.0, 0.0],
+        [1.0, 0.0],
+        [1.0, 1.0],
+        [0.501, 1.0],
+        [0.501, 0.3],
+        [0.5, 0.3],
+        [0.5, 1.0],
+        [0.0, 1.0],
+    ]);
+    narrow_notch.validate_outline().unwrap();
+    assert!(!narrow_notch.contains_floor(floor_point(5.005, 8.0)));
+    assert!(!narrow_notch.contains_floor_segment(a, b));
+}
+
+#[test]
+fn sloping_and_collinear_boundary_paths_are_contained_in_both_directions() {
+    let room = outlined_room(&[[0.0, 0.0], [1.0, 0.0], [0.8, 0.2], [0.4, 0.6], [0.0, 1.0]]);
+    room.validate_outline().unwrap();
+    let a = floor_point(9.0, 1.0);
+    let b = floor_point(1.0, 9.0);
+    assert!(room.contains_floor_segment(a, b));
+    assert!(room.contains_floor_segment(b, a));
+    let sloped = outlined_room(&[[0.07, 0.13], [0.91, 0.2], [0.8, 0.8], [0.3, 0.61]]);
+    sloped.validate_outline().unwrap();
+    for index in 0..sloped.wall_count() {
+        let a = sloped.corner(index, 0.0);
+        let b = sloped.corner(index + 1, 0.0);
+        assert!(sloped.contains_floor_segment(a, b));
+        assert!(sloped.contains_floor_segment(b, a));
+    }
+}
+
+#[test]
+fn inserting_a_rounded_bend_on_a_sloping_wall_preserves_a_valid_setup() {
+    let mut config = Config::default();
+    config.room.width = 1.0;
+    config.room.depth = 1.0;
+    config.room.outline = vec![[1.0, 1.0], [0.3, 0.0], [1.0, 0.0]];
+    config.room.screens[0].position = Point {
+        x: 0.9,
+        y: 0.5,
+        z: 1.0,
+    };
+    config.room.strip = wall_path(&config.room, &[0, 1, 2], 1.0).unwrap();
+    config.validate().unwrap();
+    let bend = config.room.strip[0].lerp(config.room.strip[1], 0.5);
+    config.room.strip.insert(1, bend);
+    config.validate().unwrap();
+    assert!(config.room.floor_mesh().is_some());
+    assert!(!config.room.contains_floor(Point {
+        x: bend.x - 0.001,
+        ..bend
+    }));
+}
+
+fn triangle_area_twice(a: Point, b: Point, c: Point) -> f32 {
+    (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+}
+
+fn mesh_contains(mesh: &FloorMesh, point: Point) -> bool {
+    mesh.triangles[..mesh.triangle_count]
+        .iter()
+        .any(|triangle| {
+            let [a, b, c] = triangle.map(|index| mesh.vertices[index]);
+            triangle_area_twice(a, b, point) >= 0.0
+                && triangle_area_twice(b, c, point) >= 0.0
+                && triangle_area_twice(c, a, point) >= 0.0
+        })
+}
+
+#[test]
+fn floor_triangles_cover_the_room_without_filling_concave_cutouts() {
+    let cases: &[(&[[f32; 2]], f32)] = &[
+        (&[], 100.0),
+        (&[[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]], 50.0),
+        (
+            &[[0.0, 0.0], [0.5, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]],
+            100.0,
+        ),
+        (&CONCAVE_OUTLINE, 64.0),
+        (&DOUBLE_NOTCH_OUTLINE, 76.0),
+    ];
+    for (case, &(outline, expected_area)) in cases.iter().enumerate() {
+        let room = outlined_room(outline);
+        let mesh = room.floor_mesh().unwrap();
+        assert_eq!(mesh.vertex_count, room.wall_count());
+        assert!(mesh.triangle_count <= mesh.vertex_count - 2);
+        let mut area = 0.0;
+        for triangle in &mesh.triangles[..mesh.triangle_count] {
+            assert!(triangle.iter().all(|&index| index < mesh.vertex_count));
+            let [a, b, c] = triangle.map(|index| mesh.vertices[index]);
+            let twice_area = triangle_area_twice(a, b, c);
+            assert!(twice_area > 0.0);
+            area += twice_area * 0.5;
+            for (start, end) in [(a, b), (b, c), (c, a)] {
+                assert!(room.contains_floor_segment(start, end));
+            }
+        }
+        close(area, expected_area);
+        for x in 0..20 {
+            for y in 0..20 {
+                let point = floor_point(x as f32 * 0.5 + 0.25, y as f32 * 0.5 + 0.25);
+                let expected = match case {
+                    1 => point.x + point.y <= 10.0,
+                    3 => point.x <= 4.0 || point.y <= 4.0,
+                    4 => {
+                        point.y <= 4.0
+                            || point.x <= 2.0
+                            || (4.0..=6.0).contains(&point.x)
+                            || point.x >= 8.0
+                    }
+                    _ => true,
+                };
+                assert_eq!(mesh_contains(&mesh, point), expected, "{case}: {point:?}");
+                assert_eq!(room.contains_floor(point), expected, "{case}: {point:?}");
+            }
+        }
+    }
+}
+
+#[test]
+fn malformed_outlines_fail_closed_in_validation_queries_meshes_and_routes() {
+    let cases: &[&[[f32; 2]]] = &[
+        &[[0.0, 0.0], [1.0, 1.0]],
+        &[[0.0, 0.0], [0.0, 1.0], [1.0, 1.0], [1.0, 0.0]], // clockwise
+        &[[0.0, 0.0], [0.5, 0.0], [1.0, 0.0]],             // zero area
+        &[[0.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 1.0]], // duplicate
+        &[[0.0, 0.0], [1.0, 1.0], [0.0, 1.0], [1.0, 0.0]], // crossing
+        &[[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.5, 0.0], [0.0, 1.0]], // self-touch
+        &[[0.0, 0.0], [1.0, 0.0], [0.5, 0.0], [1.0, 1.0], [0.0, 1.0]], // retrace
+        &[[0.0, 0.0], [0.0005, 0.0], [1.0, 0.0], [0.0, 1.0]], // physical 5 mm edge
+        &[[-0.1, 0.0], [1.0, 0.0], [0.0, 1.0]],
+        &[[0.0, 0.0], [1.1, 0.0], [0.0, 1.0]],
+        &[[0.0, 0.0], [f32::NAN, 0.0], [0.0, 1.0]],
+        &[[0.0, 0.0], [1.0, 0.0], [0.0, f32::INFINITY]],
+    ];
+    for &outline in cases {
+        let room = outlined_room(outline);
+        assert!(room.validate_outline().is_err(), "{outline:?}");
+        assert!(room.floor_mesh().is_none(), "{outline:?}");
+        assert!(!room.contains_floor(floor_point(1.0, 1.0)), "{outline:?}");
+        assert!(!room.contains_floor_segment(floor_point(1.0, 1.0), floor_point(2.0, 2.0)));
+        assert!(wall_path(&room, &[0], 1.0).is_err());
+    }
+    let mut room = outlined_room(&[]);
+    room.outline = (0..=MAX_ROOM_VERTICES)
+        .map(|index| {
+            let angle = index as f32 * std::f32::consts::TAU / (MAX_ROOM_VERTICES + 1) as f32;
+            [0.5 + 0.5 * angle.cos(), 0.5 + 0.5 * angle.sin()]
+        })
+        .collect();
+    assert!(room.validate_outline().is_err());
+    assert!(room.floor_mesh().is_none());
+    assert!(wall_path(&room, &[0], 1.0).is_err());
+}
+
+#[test]
+fn normalized_corners_scale_per_axis_and_reject_physically_collapsed_edges() {
+    let mut room = outlined_room(&[[0.0, 0.0], [0.01, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]);
+    room.width = 0.5;
+    assert!(room.validate_outline().is_err()); // normalized 0.01 is only 5 mm here
+    room.width = 5.0;
+    room.depth = 7.0;
+    room.validate_outline().unwrap();
+    point_close(
+        room.corner(1, 1.5),
+        Point {
+            x: 0.05,
+            y: 0.0,
+            z: 1.5,
+        },
+    );
+    point_close(
+        room.corner(3, 1.5),
+        Point {
+            x: 5.0,
+            y: 7.0,
+            z: 1.5,
+        },
+    );
+    assert!(room.contains_floor_segment(room.corner(0, 0.0), room.corner(2, 0.0)));
+}
+
+#[test]
+fn polygon_wall_routes_preserve_order_and_direction_through_the_vertex_limit() {
+    for outline in [
+        &[[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]][..],
+        &CONCAVE_OUTLINE,
+        &DOUBLE_NOTCH_OUTLINE,
+    ] {
+        let room = outlined_room(outline);
+        let wall_count = room.wall_count();
+        for start in 0..wall_count {
+            for step in [1, wall_count - 1] {
+                for count in 1..=wall_count {
+                    let walls: Vec<usize> = (0..count)
+                        .map(|offset| (start + step * offset) % wall_count)
+                        .collect();
+                    let path = wall_path(&room, &walls, 1.25).unwrap();
+                    assert_eq!(path.len(), count + 1);
+                    let forward = count == 1 || step == 1;
+                    for (segment, &wall) in path.windows(2).zip(&walls) {
+                        let a = room.corner(wall + usize::from(!forward), 1.25);
+                        let b = room.corner(wall + usize::from(forward), 1.25);
+                        point_close(segment[0], a);
+                        point_close(segment[1], b);
+                        assert!(room.contains_floor_segment(a, b));
+                    }
+                    if count == wall_count {
+                        point_close(path[0], path[count]);
+                    }
+                }
+            }
+        }
+        for walls in [&[wall_count][..], &[0, 0], &[0, wall_count - 1, 0]] {
+            assert!(wall_path(&room, walls, 1.25).is_err());
+        }
+    }
 }

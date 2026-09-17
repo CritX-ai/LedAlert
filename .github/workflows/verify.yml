@@ -1,0 +1,43 @@
+name: Source and distribution verification
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  technical-verification:
+    name: Debian 12 source and artifact checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Read public source without retained credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ github.sha }}
+      - name: Verify source and local artifacts in the pinned baseline
+        run: python3 packaging/release.py --verify --output dist
+
+  distribution-metadata:
+    name: First-party license and crates.io metadata
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Read public source without retained credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ github.sha }}
+      - name: Require selected first-party license text and publication metadata
+        run: python3 packaging/verify.py --require-distribution

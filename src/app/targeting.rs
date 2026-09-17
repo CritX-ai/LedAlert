@@ -15,7 +15,7 @@ struct SceneMarkerGroup {
     count: usize,
 }
 
-impl LedAlertApp {
+impl AppState {
     fn selected_anchor(&self) -> Option<usize> {
         let rule = self.config.rules.get(self.selected_rule)?;
         rule_anchor(&self.config, self.engine.positions(), rule)

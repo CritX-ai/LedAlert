@@ -15,7 +15,7 @@ fn quad(painter: &egui::Painter, corners: [Pos2; 4], color: Color32, stroke: Str
     painter.add(egui::Shape::convex_polygon(points, color, stroke));
 }
 
-impl LedAlertApp {
+impl AppState {
     pub(super) fn advance_scene(&mut self, now: Instant) {
         let elapsed = now
             .saturating_duration_since(self.scene_clock)
@@ -37,6 +37,10 @@ impl LedAlertApp {
             self.object_drag = None;
             self.display_drag = None;
             self.resize_origin = None;
+        }
+        if editing && self.inspector == Inspector::Room && self.outline_editor.open {
+            self.outline_plan(ui);
+            return;
         }
         ui.horizontal(|ui| {
             ui.heading(if editing {
@@ -123,81 +127,91 @@ impl LedAlertApp {
             self.config.room.depth,
             self.config.room.height,
         );
-        let floor = [(0.0, 0.0, 0.0), (w, 0.0, 0.0), (w, d, 0.0), (0.0, d, 0.0)]
-            .map(|(x, y, z)| projection.project(Point { x, y, z }));
         let painter = ui.painter_at(outer);
-        for (width, alpha) in [(16.0, 4), (10.0, 7), (4.0, 12)] {
-            quad(
-                &painter,
-                floor.map(|p| p + Vec2::new(0.0, 8.0)),
-                Color32::TRANSPARENT,
-                Stroke::new(width, Color32::from_black_alpha(alpha)),
-            );
-        }
-        quad(&painter, floor, FLOOR, Stroke::new(1.2, LINE));
-        let facing = projection.camera_facing();
-        let rear_x = if facing.x >= 0.0 { 0.0 } else { w };
-        let rear_y = if facing.y >= 0.0 { 0.0 } else { d };
-        let left = [
-            (rear_x, 0.0, 0.0),
-            (rear_x, d, 0.0),
-            (rear_x, d, h),
-            (rear_x, 0.0, h),
-        ]
-        .map(|(x, y, z)| projection.project(Point { x, y, z }));
-        let right = [
-            (0.0, rear_y, 0.0),
-            (w, rear_y, 0.0),
-            (w, rear_y, h),
-            (0.0, rear_y, h),
-        ]
-        .map(|(x, y, z)| projection.project(Point { x, y, z }));
-        quad(
-            &painter,
-            left,
-            Color32::from_rgb(27, 31, 54),
-            Stroke::new(1.0, LINE),
-        );
-        quad(
-            &painter,
-            right,
-            Color32::from_rgb(34, 39, 66),
-            Stroke::new(1.0, LINE),
-        );
-        for x in 1..12 {
-            for y in 1..10 {
-                let p = projection.project(Point {
-                    x: w * x as f32 / 12.0,
-                    y: d * y as f32 / 10.0,
-                    z: 0.0,
-                });
-                painter.circle_filled(p, 0.8, Color32::from_rgb(58, 71, 97));
-            }
-        }
-        // The two front walls are deliberately cut away, not drawn over the controls.
-        for (a, b) in [
-            ((w - rear_x, 0.0, h), (w - rear_x, d, h)),
-            ((0.0, d - rear_y, h), (w, d - rear_y, h)),
-        ] {
-            let (x, y, z) = a;
-            let pa = projection.project(Point { x, y, z });
-            let (x, y, z) = b;
-            let pb = projection.project(Point { x, y, z });
-            let segments = 20;
-            for i in (0..segments).step_by(2) {
+        let room = &self.config.room;
+        let walls = room.wall_count();
+        let outline_valid = room.validate_outline().is_ok();
+        for i in 0..walls {
+            let a = projection.project(room.corner(i, 0.0));
+            let b = projection.project(room.corner((i + 1) % walls, 0.0));
+            for (width, alpha) in [(16.0, 4), (10.0, 7), (4.0, 12)] {
                 painter.line_segment(
-                    [
-                        pa.lerp(pb, i as f32 / segments as f32),
-                        pa.lerp(pb, (i + 1) as f32 / segments as f32),
-                    ],
-                    Stroke::new(1.0, LINE.linear_multiply(0.55)),
+                    [a + Vec2::new(0.0, 8.0), b + Vec2::new(0.0, 8.0)],
+                    Stroke::new(width, Color32::from_black_alpha(alpha)),
                 );
             }
         }
-        let show_displays = !editing || !self.guide || self.inspector != Inspector::Room;
+        outline::paint_floor(&painter, room, |p| projection.project(p), FLOOR);
+        let facing = projection.camera_facing();
+        let mut order: [usize; MAX_ROOM_VERTICES] = std::array::from_fn(|i| i);
+        order[..walls].sort_by(|&a, &b| {
+            let center = |i| {
+                room.corner(i, h * 0.5)
+                    .lerp(room.corner((i + 1) % walls, h * 0.5), 0.5)
+            };
+            projection
+                .depth(center(a))
+                .total_cmp(&projection.depth(center(b)))
+        });
+        for &i in &order[..walls] {
+            let a = room.corner(i, 0.0);
+            let b = room.corner((i + 1) % walls, 0.0);
+            let top_a = Point { z: h, ..a };
+            let top_b = Point { z: h, ..b };
+            let interior_faces_camera = facing.x * (a.y - b.y) + facing.y * (b.x - a.x) > 0.0;
+            if outline_valid && interior_faces_camera {
+                quad(
+                    &painter,
+                    [a, b, top_b, top_a].map(|p| projection.project(p)),
+                    if (a.y - b.y).abs() > (a.x - b.x).abs() {
+                        Color32::from_rgb(27, 31, 54)
+                    } else {
+                        Color32::from_rgb(34, 39, 66)
+                    },
+                    Stroke::new(1.0, LINE),
+                );
+            } else if outline_valid {
+                let pa = projection.project(top_a);
+                let pb = projection.project(top_b);
+                for segment in (0..20).step_by(2) {
+                    painter.line_segment(
+                        [
+                            pa.lerp(pb, segment as f32 / 20.0),
+                            pa.lerp(pb, (segment + 1) as f32 / 20.0),
+                        ],
+                        Stroke::new(1.0, LINE.linear_multiply(0.55)),
+                    );
+                }
+            }
+            painter.line_segment(
+                [projection.project(a), projection.project(b)],
+                Stroke::new(1.2, if outline_valid { LINE } else { ERROR }),
+            );
+        }
+        for x in 1..12 {
+            for y in 1..10 {
+                let point = Point {
+                    x: w * x as f32 / 12.0,
+                    y: d * y as f32 / 10.0,
+                    z: 0.0,
+                };
+                if room.contains_floor(point) {
+                    painter.circle_filled(
+                        projection.project(point),
+                        0.8,
+                        Color32::from_rgb(58, 71, 97),
+                    );
+                }
+            }
+        }
+        let show_displays = !editing
+            || !self.guide
+            || self.inspector != Inspector::Room
+            || self.validation_error.is_some();
         let show_strip = !editing
             || !self.guide
-            || matches!(self.inspector, Inspector::Strip | Inspector::Rules);
+            || matches!(self.inspector, Inspector::Strip | Inspector::Rules)
+            || self.validation_error.is_some();
         let motion = if self.config.reduced_motion {
             0.0
         } else {
@@ -296,7 +310,7 @@ impl LedAlertApp {
                     point.x = point.x.clamp(0.0, w);
                     point.y = point.y.clamp(0.0, d);
                     point.z = point.z.clamp(0.0, h);
-                    if point.distance(a) >= 0.01 && point.distance(b) >= 0.01 {
+                    if point.separated_from(a) && point.separated_from(b) {
                         let count = self.config.room.strip.len();
                         self.insert_point(index, point);
                         if self.config.room.strip.len() != count {
@@ -389,33 +403,46 @@ impl LedAlertApp {
         if self.orbit_origin.is_some() {
             return;
         }
-        let (w, d, h) = (
-            self.config.room.width,
-            self.config.room.depth,
-            self.config.room.height,
-        );
-        let rear = projection.camera_facing();
-        let rear_x = if rear.x >= 0.0 { 0.0 } else { w };
-        let rear_y = if rear.y >= 0.0 { 0.0 } else { d };
-        let edges = [
-            ((0.0, 0.0, 0.0), (0.0, d, 0.0)),
-            ((w, 0.0, 0.0), (w, d, 0.0)),
-            ((0.0, 0.0, 0.0), (w, 0.0, 0.0)),
-            ((0.0, d, 0.0), (w, d, 0.0)),
-            ((0.0, rear_y, h), (w, rear_y, h)),
-            ((rear_x, 0.0, h), (rear_x, d, h)),
-        ]
-        .map(|(a, b)| {
-            let (x, y, z) = a;
-            let pa = projection.project(Point { x, y, z });
-            let (x, y, z) = b;
-            [pa, projection.project(Point { x, y, z })]
-        });
+        let room = &self.config.room;
+        let (w, d, h) = (room.width, room.depth, room.height);
+        let facing = projection.camera_facing();
+        let mut edges = [([Pos2::ZERO; 2], 0usize); MAX_ROOM_VERTICES * 2];
+        let mut count = 0;
+        for i in 0..room.wall_count() {
+            let a = room.corner(i, 0.0);
+            let b = room.corner((i + 1) % room.wall_count(), 0.0);
+            let code = if a.x == 0.0 && b.x == 0.0 {
+                Some(0)
+            } else if a.x == w && b.x == w {
+                Some(1)
+            } else if a.y == 0.0 && b.y == 0.0 {
+                Some(2)
+            } else if a.y == d && b.y == d {
+                Some(3)
+            } else {
+                None
+            };
+            if let Some(code) = code {
+                edges[count] = ([projection.project(a), projection.project(b)], code);
+                count += 1;
+            }
+            if facing.x * (a.y - b.y) + facing.y * (b.x - a.x) > 0.0 {
+                edges[count] = (
+                    [
+                        projection.project(Point { z: h, ..a }),
+                        projection.project(Point { z: h, ..b }),
+                    ],
+                    4,
+                );
+                count += 1;
+            }
+        }
+        let edges = &edges[..count];
         let closest = |pointer: Pos2| {
             edges
                 .iter()
                 .enumerate()
-                .map(|(i, pair)| (i, closest_on_segment(pointer, pair[0], pair[1]).1))
+                .map(|(i, (pair, _))| (i, closest_on_segment(pointer, pair[0], pair[1]).1))
                 .min_by(|a, b| a.1.total_cmp(&b.1))
                 .filter(|(_, distance)| *distance <= 14.0)
                 .map(|(i, _)| i)
@@ -430,7 +457,7 @@ impl LedAlertApp {
             && let Some(pointer) = ui.input(|input| input.pointer.press_origin())
             && let Some(edge) = closest(pointer)
         {
-            self.resize_origin = Some((self.config.clone(), fitted, pointer, edge));
+            self.resize_origin = Some((self.config.clone(), fitted, pointer, edges[edge].1));
         }
         if response.dragged_by(egui::PointerButton::Primary)
             && let Some((start, frame, origin, edge)) = &self.resize_origin
@@ -460,12 +487,12 @@ impl LedAlertApp {
             );
             ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
         }
-        for (index, edge) in edges.iter().enumerate() {
+        for (index, (edge, code)) in edges.iter().enumerate() {
             let active = hovered == Some(index)
                 || self
                     .resize_origin
                     .as_ref()
-                    .is_some_and(|(_, _, _, i)| *i == index);
+                    .is_some_and(|(_, _, _, i)| i == code);
             painter.line_segment(
                 *edge,
                 Stroke::new(
@@ -480,9 +507,9 @@ impl LedAlertApp {
                 Stroke::new(4.0, if active { ACCENT } else { MUTED }),
             );
             if active {
-                let (name, value) = if index < 2 {
+                let (name, value) = if *code < 2 {
                     ("Width", self.config.room.width)
-                } else if index < 4 {
+                } else if *code < 4 {
                     ("Depth", self.config.room.depth)
                 } else {
                     ("Height", self.config.room.height)
@@ -643,7 +670,14 @@ impl LedAlertApp {
             painter.line_segment([pos, foot], Stroke::new(1.0, LINE.linear_multiply(alpha)));
             painter.circle_stroke(foot, 4.0, Stroke::new(1.0, LINE.linear_multiply(alpha)));
         }
-        let color = if selected { ACCENT } else { MUTED }.linear_multiply(alpha);
+        let color = if !self.config.room.contains_floor(screen.position) {
+            ERROR
+        } else if selected {
+            ACCENT
+        } else {
+            MUTED
+        }
+        .linear_multiply(alpha);
         quad(
             painter,
             corners,
@@ -734,7 +768,9 @@ impl LedAlertApp {
                 points,
                 Stroke::new(
                     if selected { 4.0 } else { 3.0 },
-                    if selected {
+                    if !self.config.room.contains_floor_segment(pair[0], pair[1]) {
+                        ERROR
+                    } else if selected {
                         ACCENT
                     } else {
                         Color32::from_rgb(110, 131, 160)
@@ -743,7 +779,7 @@ impl LedAlertApp {
                 ),
             );
         }
-        if activity {
+        if activity && self.validation_error.is_none() {
             let shown = if self.sidebar_visible && self.preview.is_active() {
                 &self.preview
             } else {

@@ -1,0 +1,24 @@
+FROM docker.io/library/rust:1.95.0-slim-bookworm@sha256:6f9e63259f12e1e599296f5ecfed2bae46de4af0ee0525dd8b89c046e236d5c5
+
+# Public build/runtime prerequisites only. No application source or host config
+# enters this image; release.py supplies a separate source-only snapshot.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        binutils build-essential ca-certificates pkg-config python3 \
+        dbus xvfb xauth xdotool x11-utils fonts-dejavu-core \
+        libegl1-mesa-dev libgl1-mesa-dev libgl1-mesa-dri libglx-mesa0 \
+        libwayland-dev libxkbcommon-dev libxkbcommon-x11-0 \
+        libx11-dev libxcursor-dev libxi-dev libxinerama-dev libxrandr-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && rustup component add --toolchain 1.95.0 rustfmt clippy rust-docs
+
+ENV RUSTUP_TOOLCHAIN=1.95.0 \
+    CARGO_TERM_COLOR=never \
+    PYTHONDONTWRITEBYTECODE=1 \
+    LC_ALL=C.UTF-8 \
+    TZ=UTC
+
+# The native stage rejects hosts/other images rather than misreporting them as
+# this baseline. Its recorded recipe must match the exported build definition.
+COPY Containerfile /usr/local/share/ledalert/Containerfile
+WORKDIR /build

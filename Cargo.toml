@@ -1,12 +1,29 @@
 [package]
 name = "ledalert"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.95"
-description = "Spatial desktop notifications for WLED on Linux"
+description = "Spatial Linux desktop notifications and media activity mapped to WLED room lighting"
+homepage = "https://alert.critx.ai/"
 repository = "https://github.com/CritX-ai/LedAlert"
 readme = "README.md"
-publish = false
+license = "MIT OR Apache-2.0"
+publish = ["crates-io"]
+categories = ["command-line-utilities", "gui"]
+keywords = ["wled", "notifications", "linux", "lighting", "desktop"]
+include = [
+    "/Cargo.toml",
+    "/Cargo.lock",
+    "/README.md",
+    "/LICENSE-MIT",
+    "/LICENSE-APACHE",
+    "/src/**/*.rs",
+    "/tests/**/*.rs",
+    "/assets/ledalert.png",
+    "/assets/fonts/Silkscreen-Bold.ttf",
+    "/assets/fonts/OFL.txt",
+    "/packaging/licenses/**",
+]
 
 [dependencies]
 anyhow = "1.0"

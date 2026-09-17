@@ -22,6 +22,7 @@
 /.agents/
 /.omp/
 /.impeccable/
+/.maintainer/
 
 # Local configuration, credentials, editor state, and runtime captures.
 /AGENTS.md

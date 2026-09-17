@@ -1,6 +1,6 @@
 use super::*;
 
-impl LedAlertApp {
+impl AppState {
     pub(super) fn orbit_camera(&mut self, ui: &egui::Ui, rect: Rect) {
         let middle = egui::PointerButton::Middle;
         ui.input(|input| {
@@ -84,10 +84,10 @@ impl LedAlertApp {
             || index
                 .checked_sub(1)
                 .and_then(|i| strip.get(i))
-                .is_some_and(|neighbor| neighbor.distance(point) < 0.01)
+                .is_some_and(|neighbor| !neighbor.separated_from(point))
             || strip
                 .get(index + 1)
-                .is_some_and(|neighbor| neighbor.distance(point) < 0.01)
+                .is_some_and(|neighbor| !neighbor.separated_from(point))
         {
             return false;
         }
@@ -105,10 +105,10 @@ impl LedAlertApp {
                 ui.set_min_height(76.0);
                 if self.placement_open {
                     ui.horizontal(|ui| {
-                        if ui.add(Action::new(Icon::Grid, "Replace the path with all four walls. Undo restores the previous path and LED allocation.")
+                        if ui.add(Action::new(Icon::Grid, "Replace the path with every outline wall and reset LED allocation. Undo restores the previous path and allocation.")
                             .label("Around room")).clicked()
                         {
-                            self.selected_walls = vec![0, 1, 2, 3];
+                            self.selected_walls = (0..self.config.room.wall_count()).collect();
                             self.apply_wall_route();
                         }
                         if ui.add(Action::new(Icon::Wall, "Select adjacent walls in route order, then place the strip.")
@@ -125,7 +125,7 @@ impl LedAlertApp {
                     });
                     if self.placing_walls {
                         ui.horizontal(|ui| {
-                            ui.label(format!("{} / 4 walls", self.selected_walls.len()));
+                            ui.label(format!("{} / {} walls", self.selected_walls.len(), self.config.room.wall_count()));
                             if ui.add_enabled(!self.selected_walls.is_empty(),
                                 Action::new(Icon::Undo, "Remove the last wall from the route")).clicked()
                             {
@@ -156,15 +156,15 @@ impl LedAlertApp {
                 let midpoint = span[0].lerp(span[1], 0.5);
                 let span_length = span[0].distance(span[1]);
                 let can_add = self.config.room.strip.len() < MAX_POINTS
-                    && midpoint.distance(span[0]) >= 0.01
-                    && midpoint.distance(span[1]) >= 0.01
+                    && midpoint.separated_from(span[0])
+                    && midpoint.separated_from(span[1])
                     && (self.config.room.led_anchors.is_empty()
                         || self.config.room.led_anchors[span_index + 1]
                             - self.config.room.led_anchors[span_index] >= 2);
                 let can_remove = point_index.is_some_and(|index| {
                     let strip = &self.config.room.strip;
                     strip.len() > 2 && (index == 0 || index + 1 == strip.len()
-                        || strip[index - 1].distance(strip[index + 1]) >= 0.01)
+                        || strip[index - 1].separated_from(strip[index + 1]))
                 });
                 ui.horizontal(|ui| {
                     if let Some(index) = point_index {
@@ -310,35 +310,20 @@ impl LedAlertApp {
     ) {
         let room = &self.config.room;
         let z = self.strip_height_bounds().0;
-        let corners = [
-            Point { x: 0.0, y: 0.0, z },
-            Point {
-                x: room.width,
-                y: 0.0,
-                z,
-            },
-            Point {
-                x: room.width,
-                y: room.depth,
-                z,
-            },
-            Point {
-                x: 0.0,
-                y: room.depth,
-                z,
-            },
-        ];
+        let wall_count = room.wall_count();
+        let corners: [Point; MAX_ROOM_VERTICES] =
+            std::array::from_fn(|i| room.corner(i % wall_count, z));
         let pointer = ui.input(|input| input.pointer.hover_pos());
         let nearest = pointer
             .and_then(|p| {
-                (0..4)
+                (0..wall_count)
                     .map(|i| {
                         (
                             i,
                             closest_on_segment(
                                 p,
                                 projection.project(corners[i]),
-                                projection.project(corners[(i + 1) % 4]),
+                                projection.project(corners[(i + 1) % wall_count]),
                             )
                             .1,
                         )
@@ -361,7 +346,7 @@ impl LedAlertApp {
                 self.selected_walls = selection;
             }
         }
-        for i in 0..4 {
+        for i in 0..wall_count {
             let selected = self.selected_walls.iter().position(|wall| *wall == i);
             let color = if selected.is_some() {
                 ACCENT
@@ -371,15 +356,18 @@ impl LedAlertApp {
                 MUTED
             };
             let a = projection.project(corners[i]);
-            let b = projection.project(corners[(i + 1) % 4]);
+            let b = projection.project(corners[(i + 1) % wall_count]);
             painter.line_segment(
                 [a, b],
                 Stroke::new(if selected.is_some() { 5.0 } else { 3.0 }, color),
             );
-            let label = selected.map_or_else(
-                || ["Back", "Right", "Front", "Left"][i].to_owned(),
-                |order| format!("{} · {}", order + 1, ["Back", "Right", "Front", "Left"][i]),
-            );
+            let name = if room.outline.is_empty() {
+                ["Back", "Right", "Front", "Left"][i].to_owned()
+            } else {
+                format!("Wall {}", i + 1)
+            };
+            let label =
+                selected.map_or_else(|| name.clone(), |order| format!("{} · {name}", order + 1));
             painter.text(
                 a.lerp(b, 0.5) + Vec2::new(0.0, -10.0),
                 Align2::CENTER_BOTTOM,

@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0c101d">
+  <title>{% if page.data.is_home %}LedAlert — Field manual{% else %}{{ page.title }} — LedAlert{% endif %}</title>
+  <meta name="description" content="{{ page.description }}">
+  {% if site.preview %}<meta name="robots" content="noindex, nofollow">{% endif %}
+  <link rel="canonical" href="{{ canonical_url }}">
+  <link rel="icon" href="{{ site_root }}media/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ asset_base }}/site.css">
+  <script src="{{ asset_base }}/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to the manual</a>
+  <header class="masthead">
+    <a class="brand" href="{{ site_root }}" aria-label="LedAlert field manual home">
+      <img src="{{ site_root }}media/mascots/idle.png" alt="" width="40" height="40">
+      <span>LedAlert</span>
+    </a>
+    <span class="manual-label">Field manual</span>
+    <a class="source-link" href="https://github.com/CritX-ai/LedAlert">Source on GitHub <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M6 18 18 6M6 6h12v12"/></svg></a>
+  </header>
+  <div class="console">
+    <details class="guide-index" open>
+      <summary>Guide index</summary>
+      <nav class="mission-nav" aria-label="Field manual">
+        <div class="index-title">Mission index</div>
+        {% for group in site.groups %}
+        <section class="nav-group">
+          <h2>{{ group.title }}</h2>
+          <ul>{% for item in group.items %}
+            <li><a href="{{ item.path }}" {% if item.path == current_path %}aria-current="page"{% endif %}>{{ item.title }}</a></li>
+          {% endfor %}</ul>
+        </section>
+        {% endfor %}
+      </nav>
+    </details>
+    <main id="main" tabindex="-1">
+      <section class="manual-search" aria-label="Search the field manual" data-search-index="{{ site.search_index_path }}">
+        <form role="search">
+          <label for="manual-query">Find an answer</label>
+          <div class="search-controls">
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/></svg>
+            <input id="manual-query" type="search" placeholder="Room shape, WLED, permissions…" autocomplete="off" aria-describedby="search-status" aria-controls="search-results">
+            <button type="submit">Search</button>
+          </div>
+        </form>
+        <div class="search-output" hidden>
+          <div class="search-status-row">
+            <p id="search-status" role="status" aria-live="polite"></p>
+            <button class="close-search" type="button">Close results</button>
+          </div>
+          <ul id="search-results"></ul>
+        </div>
+        <noscript><p>Search needs JavaScript. Every page is available in the guide index.</p></noscript>
+      </section>
+      <article class="{% if page.data.is_home %}home-article{% else %}guide-article{% endif %}">
+        {% if page.data.is_home %}
+        <header class="briefing">
+          <div>
+            <h1 id="{{ page.data.heading_id }}">Your room.<br>On alert.</h1>
+            <a class="primary-action" href="{{ site_root }}guide/install/">Install and connect <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></a>
+          </div>
+          <img class="briefing-mascot" src="{{ site_root }}media/mascots/alert.png" alt="LedAlert's mildly alarmed pixel diode" width="128" height="128">
+        </header>
+        {% else %}
+        <header class="article-heading">
+          <h1 id="{{ page.data.heading_id }}">{{ page.title }}</h1>
+          <p>{{ page.description }}</p>
+        </header>
+        {% endif %}
+        {% if page.data.toc %}
+        <details class="article-index">
+          <summary id="page-contents">On this page</summary>
+          <nav aria-label="Article sections">
+            <ul>{% for heading in page.data.toc %}{% if heading.level <= 3 %}
+              <li class="toc-level-{{ heading.level }}"><a href="#{{ heading.id }}">{{ heading.title }}</a></li>
+            {% endif %}{% endfor %}</ul>
+          </nav>
+        </details>
+        <div class="reading-tools" hidden><a href="#page-contents">Back to contents <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 20V4m-6 6 6-6 6 6"/></svg></a></div>
+        {% endif %}
+        <div class="prose">{{ page.data.body_html | safe }}</div>
+      </article>
+      <footer class="page-footer">
+        <img src="{{ site_root }}media/mascots/salute.png" alt="" width="64" height="64">
+        <div><strong>End of briefing. Your move.</strong><p><a href="{{ site_root }}guide/troubleshooting/">Find a fix</a> · <a href="{{ site_root }}roadmap/">Read the roadmap</a> · <a href="{{ site_root }}security/">Security</a></p></div>
+        <p class="build-note">Built with <a href="https://regen.critx.ai/">ReGen</a>.<br>No trackers. Fonts hosted here.</p>
+      </footer>
+    </main>
+    <aside class="page-rail" aria-label="Page navigation and release status">
+      <nav aria-label="On this page">
+        <h2>On this page</h2>
+        <ul>{% for heading in page.data.toc %}{% if heading.level == 2 %}
+          <li><a href="#{{ heading.id }}">{{ heading.title }}</a></li>
+        {% endif %}{% endfor %}</ul>
+      </nav>
+      <div class="release-note">
+        <strong>LedAlert 0.2.0</strong>
+        <p>{{ site.release_label }}</p>
+        <a href="{{ site_root }}releases/">Release notes</a>
+      </div>
+    </aside>
+  </div>
+</body>
+</html>
