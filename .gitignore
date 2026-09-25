@@ -25,6 +25,10 @@
 /.impeccable/
 /.maintainer/
 
+# Private signing guidance and native Windows verification captures.
+/SIGNING.md
+/windows/
+
 # Local configuration, credentials, editor state, and runtime captures.
 /AGENTS.md
 /IMPORTANT.md
