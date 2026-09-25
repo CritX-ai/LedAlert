@@ -36,14 +36,14 @@ class SourceExportTests(unittest.TestCase):
 
     def test_verification_sources_are_exported_but_private_handoff_is_not(self):
         for name in ("examples/windows_probe.rs", "tools/windows-verify.ps1", "docs/windows-verification.md",
-                     ".windows-handoff/private.json"):
+                     "private-release-handoff/0.3.0-alpha/environment.json"):
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("fixture\n")
         exported = release.source_files()
         self.assertTrue({"examples/windows_probe.rs", "tools/windows-verify.ps1",
                          "docs/windows-verification.md"}.issubset(exported))
-        self.assertNotIn(".windows-handoff/private.json", exported)
+        self.assertNotIn("private-release-handoff/0.3.0-alpha/environment.json", exported)
 
     def test_symlink_cannot_export_external_source(self):
         outside = self.root / "private.txt"
@@ -106,6 +106,30 @@ class SourceExportTests(unittest.TestCase):
                 release.archive(path, "ledalert-0.1.0", {**entries, private: (b"not a crate input", 0o644)}, 0)
                 with self.assertRaises(ValueError):
                     verify.inspect_crate(self.root, path)
+
+    def test_crate_requires_exact_public_taskband_fixture(self):
+        fixture = "tests/fixtures/windows-taskband-v3.hex"
+        for name in ("assets/ledalert.png", "assets/fonts/Silkscreen-Bold.ttf",
+                     "assets/fonts/OFL.txt", fixture):
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"000102\n" if name == fixture else b"public embedded asset")
+        names = ("Cargo.toml", "Cargo.lock", "README.md", "src/main.rs", "assets/ledalert.png",
+                 "assets/fonts/Silkscreen-Bold.ttf", "assets/fonts/OFL.txt", fixture)
+        entries = {name: ((self.root / name).read_bytes(), 0o644) for name in names}
+        entries["Cargo.toml.orig"] = entries["Cargo.toml"]
+        valid = self.root / "valid.crate"
+        release.archive(valid, "ledalert-0.1.0", entries, 0)
+        verify.inspect_crate(self.root, valid)
+        for case, payload in (
+            ("missing", {name: entry for name, entry in entries.items() if name != fixture}),
+            ("changed", {**entries, fixture: (b"030405\n", 0o644)}),
+        ):
+            with self.subTest(case=case):
+                archive = self.root / f"{case}.crate"
+                release.archive(archive, "ledalert-0.1.0", payload, 0)
+                with self.assertRaises(ValueError):
+                    verify.inspect_crate(self.root, archive)
 
     def test_crate_must_retain_embedded_font_notice(self):
         for name in ("assets/ledalert.png", "assets/fonts/Silkscreen-Bold.ttf", "assets/fonts/OFL.txt"):

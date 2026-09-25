@@ -134,6 +134,7 @@ def inspect_crate(root: Path, path: Path) -> None:
         name: source for name, source in release.source_files(root).items()
         if name in fixed or
         (name.startswith(("src/", "tests/", "examples/")) and name.endswith(".rs")) or
+        (Path(name).parent.as_posix() == "tests/fixtures" and name.endswith(".hex")) or
         name.startswith("packaging/licenses/")
     }
     require(fixed.issubset(expected), "Missing crate source, embedded asset or license")

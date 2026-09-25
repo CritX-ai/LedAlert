@@ -9,6 +9,7 @@
 - Windows x64 portable ZIP and **unsigned development-only MSIX**, external signing support, target-specific cargo-binstall metadata, and native Windows CI alongside Linux verification. No production signed installer is available yet.
 - Release packaging preserves pinned upstream license bytes across Windows CRLF checkouts and includes Windows-only dependency notices.
 - Linux-runnable Windows taskbar fixtures, notification lifecycle/timing/permission reducers, lock/media state tests, display geometry tests and package-security regressions. Existing Linux integrations remain supported.
+- Cargo source inventory verification includes the portable Taskband fixture and rejects missing or changed fixture bytes, while keeping private captures outside the package.
 - GitHub-only prerelease at `v0.3.0-alpha`, not the latest stable release and not published to crates.io; unversioned Cargo installation still selects the stable published release.
 - Windows installation and release documentation distinguishes explicit Developer Mode registration from trusted production signing; no signature bypass or automatic certificate trust changes.
 - Repeatable [Windows verification](docs/windows-verification.md) provides production-adapter inventory/observation, an isolated synthetic notification lifecycle GUI, opt-in registration/toast/cleanup helpers, public regression fixtures and a manual acceptance matrix. The alpha workstation passed the synthetic lifecycle; interactive media, lock/disconnect and physical WLED acceptance remain unverified.
