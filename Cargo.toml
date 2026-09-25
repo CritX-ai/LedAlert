@@ -1,9 +1,9 @@
 [package]
 name = "ledalert"
-version = "0.2.1"
+version = "0.3.0-alpha"
 edition = "2024"
 rust-version = "1.95"
-description = "Spatial Linux desktop notifications and media activity mapped to WLED room lighting"
+description = "Spatial Windows and Linux desktop notifications and media activity mapped to WLED room lighting"
 homepage = "https://alert.critx.ai/"
 documentation = "https://alert.critx.ai/"
 repository = "https://github.com/CritX-ai/LedAlert"
@@ -11,7 +11,7 @@ readme = "README.md"
 license = "MIT OR Apache-2.0"
 publish = ["crates-io"]
 categories = ["command-line-utilities", "gui"]
-keywords = ["wled", "notifications", "linux", "lighting", "desktop"]
+keywords = ["wled", "notifications", "windows", "lighting", "desktop"]
 include = [
     "/Cargo.toml",
     "/Cargo.lock",
@@ -20,6 +20,8 @@ include = [
     "/LICENSE-APACHE",
     "/src/**/*.rs",
     "/tests/**/*.rs",
+    "/tests/fixtures/*.hex",
+    "/examples/**/*.rs",
     "/assets/ledalert.png",
     "/assets/fonts/Silkscreen-Bold.ttf",
     "/assets/fonts/OFL.txt",
@@ -36,18 +38,49 @@ disabled-strategies = ["quick-install"]
 pkg-url = "{ repo }/releases/download/v{ version }/ledalert-{ version }-linux-x86_64.tar.gz"
 bin-dir = "ledalert-{ version }-linux-x86_64/bin/{ bin }{ binary-ext }"
 
+[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
+pkg-url = "{ repo }/releases/download/v{ version }/ledalert-{ version }-windows-x86_64.zip"
+bin-dir = "{ bin }{ binary-ext }"
+pkg-fmt = "zip"
+
 [dependencies]
 anyhow = "1.0"
 eframe = { version = "0.36.2", default-features = false, features = ["default_fonts", "accesskit", "glow", "wayland", "x11"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 reqwest = { version = "0.13.5", default-features = false, features = ["blocking", "json"] }
-zbus = { version = "5.19.0", default-features = false, features = ["tokio", "blocking-api"] }
 tokio = { version = "1.48", features = ["rt", "sync", "time", "macros", "net"] }
-futures-util = "0.3"
 png = "0.18"
 resvg = { version = "0.45.1", default-features = false }
 roxmltree = "0.20"
+
+[target.'cfg(unix)'.dependencies]
+zbus = { version = "5.19.0", default-features = false, features = ["tokio", "blocking-api"] }
+futures-util = "0.3"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62.2", features = [
+    "ApplicationModel",
+    "Data_Xml_Dom",
+    "Foundation",
+    "Foundation_Collections",
+    "Media_Control",
+    "UI_Notifications",
+    "UI_Notifications_Management",
+    "Win32_Storage_EnhancedStorage",
+    "Win32_Devices_Display",
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_System_Com",
+    "Win32_System_Com_StructuredStorage",
+    "Win32_System_Registry",
+    "Win32_System_RemoteDesktop",
+    "Win32_System_WinRT",
+    "Win32_UI_Shell",
+    "Win32_UI_Shell_Common",
+    "Win32_UI_Shell_PropertiesSystem",
+] }
+windows-future = "0.3.2"
 
 [dev-dependencies]
 tempfile = "3.23"
@@ -58,7 +91,7 @@ codegen-units = 1
 strip = "debuginfo"
 
 [lints.rust]
-unsafe_code = "forbid"
+unsafe_code = "deny"
 
 [lints.clippy]
 all = "warn"

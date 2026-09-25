@@ -29,10 +29,23 @@ BUILDER_RECIPE = Path("/usr/local/share/ledalert/Containerfile")
 FILES = (".gitignore", ".github/workflows/verify.yml", ".github/workflows/pages.yml",
          ".github/workflows/release.yml", "Cargo.toml", "Cargo.lock",
          "README.md", "CHANGELOG.md", "RELEASE.md", "SECURITY.md", "packaging/Containerfile")
-TREES = ("src", "tests", "assets", "packaging", "docs")
+TREES = ("src", "tests", "examples", "tools", "assets", "packaging", "docs")
 NOTICE_NAME = re.compile(r"(?:^|[-_.])(licen[cs]e|copying|notice|copyright|ofl|ufl)(?:$|[-_.])", re.I)
 FIRST_PARTY_NOTICE = re.compile(r"^(?:licen[cs]e|copying|notice|copyright)(?:$|[-_.])", re.I)
 FONT_NOTICES = ("fonts/Hack-Regular.txt", "fonts/OFL.txt", "fonts/UFL.txt", "fonts/emoji-icon-font-mit-license.txt")
+
+
+def version_info(version: str) -> tuple[str, bool]:
+    """Return collision-free MSIX version and prerelease status for supported releases."""
+    number = r"(?:0|[1-9][0-9]{0,4})"
+    match = re.fullmatch(rf"({number})\.({number})\.({number})(?:-(alpha|beta|rc)(?:\.([1-9][0-9]{{0,3}}))?)?", version)
+    if match is None:
+        raise ValueError("Release version must be major.minor.patch[-alpha|beta|rc[.N]], with N from 1 to 9999")
+    major, minor, patch, stage, sequence = match.groups()
+    if any(int(part) > 65535 for part in (major, minor, patch)):
+        raise ValueError("Version components exceed MSIX limits")
+    revision = {None: 40000, "alpha": 10000, "beta": 20000, "rc": 30000}[stage] + int(sequence or 0)
+    return f"{major}.{minor}.{patch}.{revision}", stage is not None
 
 
 def command(*args: str, env: dict[str, str] | None = None, cwd: Path | None = None) -> str:
@@ -80,8 +93,8 @@ def source_files(root: Path | None = None) -> dict[str, Path]:
     return dict(sorted(files.items()))
 
 
-def metadata(root: Path | None = None) -> dict:
-    return json.loads(command("cargo", "metadata", "--locked", "--format-version", "1", "--filter-platform", TARGET, cwd=root))
+def metadata(root: Path | None = None, target: str = TARGET) -> dict:
+    return json.loads(command("cargo", "metadata", "--locked", "--format-version", "1", "--filter-platform", target, cwd=root))
 
 
 def font_metadata(path: Path) -> bytes:
@@ -145,7 +158,7 @@ def dependency_packages(meta: dict) -> list[dict]:
                   key=lambda package: (package["name"], package["version"]))
 
 
-def notice_inputs(meta: dict, root: Path | None = None) -> tuple[dict[str, bytes], list[dict]]:
+def notice_inputs(meta: dict, root: Path | None = None, target: str = TARGET) -> tuple[dict[str, bytes], list[dict]]:
     root = ROOT if root is None else root
     lock = tomllib.loads((root / "Cargo.lock").read_text())
     checksums = {(p["name"], p["version"]): p.get("checksum") for p in lock["package"]}
@@ -186,6 +199,10 @@ def notice_inputs(meta: dict, root: Path | None = None) -> tuple[dict[str, bytes
                 raise ValueError(f"Unsafe notice override for {key}")
             content = path.read_bytes()
             if digest(content) != entry["sha256"]:
+                # Windows Git checkouts can expand LF to CRLF. Recover the pinned
+                # upstream bytes only when their original digest still matches.
+                content = content.replace(b"\r\n", b"\n")
+            if digest(content) != entry["sha256"]:
                 raise ValueError(f"Notice digest mismatch for {key}: {entry['file']}")
             destination = "licenses/upstream/" + entry["file"]
             copied[destination] = content
@@ -207,8 +224,8 @@ def notice_inputs(meta: dict, root: Path | None = None) -> tuple[dict[str, bytes
     copied["licenses/Saira-OFL.txt"] = (root / "docs/site/assets/fonts/saira-OFL.txt").read_bytes()
     runtime_files, runtime_inventory = rust_notices()
     copied.update(runtime_files)
-    copied["licenses/INVENTORY.json"] = json_bytes({"scope": "Resolved Linux target closure, including development and build-time crates; not a claim that every listed crate is linked into the executable.",
-                                                   "target": TARGET, "packages": inventory, "rust_runtime": runtime_inventory,
+    copied["licenses/INVENTORY.json"] = json_bytes({"scope": "Resolved target closure, including development and build-time crates; not a claim that every listed crate is linked into the executable.",
+                                                   "target": target, "packages": inventory, "rust_runtime": runtime_inventory,
                                                    "application_font": {"file": "assets/fonts/Silkscreen-Bold.ttf", "notice": "licenses/Silkscreen-OFL.txt"},
                                                    "documentation_fonts": [{"name": "Saira", "file": "docs/site/assets/fonts/saira.woff2",
                                                                             "sha256": digest((root / "docs/site/assets/fonts/saira.woff2").read_bytes()),
@@ -242,6 +259,7 @@ def archive(path: Path, prefix: str, entries: dict[str, tuple[bytes, int]], epoc
 
 def release_names(version: str, crate: bool = False) -> list[str]:
     names = [f"ledalert-{version}-linux-x86_64.tar.gz", f"ledalert-{version}-source.tar.gz", "SHA256SUMS"]
+    version_info(version)
     if crate:
         names.append(f"ledalert-{version}.crate")
     return names
@@ -275,6 +293,19 @@ def container_engine() -> tuple[str, bool]:
     raise ValueError("A working rootless Podman installation (preferred) or Docker daemon is required; no host-native fallback is allowed.")
 
 
+def build_image(engine: str, context: Path, recipe: bytes) -> str:
+    if not recipe.decode().startswith(f"FROM {BASE_IMAGE}\n"):
+        raise ValueError("Containerfile does not use the selected digest-pinned baseline")
+    (context / "Containerfile").write_bytes(recipe)
+    image_id = context / "image-id"
+    subprocess.run([engine, "build", "--platform", "linux/amd64", "--file", str(context / "Containerfile"),
+                    "--iidfile", str(image_id), str(context)], check=True)
+    image = image_id.read_text().strip()
+    if not re.fullmatch(r"sha256:[0-9a-f]{64}", image):
+        raise ValueError("Container engine did not return a valid built image ID")
+    return image
+
+
 def container_build(output: Path, names: list[str], epoch: int, verify: bool, commit: str | None = None) -> None:
     if platform.system() != "Linux" or platform.machine() != "x86_64":
         raise ValueError("The controlled builder requires a Linux x86_64 host; emulated or cross builds are not supported")
@@ -296,17 +327,8 @@ def container_build(output: Path, names: list[str], epoch: int, verify: bool, co
             destination.chmod(0o644)
         if hashes != {name: digest(path.read_bytes()) for name, path in source_files().items()}:
             raise ValueError("Source inputs changed during staging; rerun from a stable tree")
-        recipe = (source / "packaging/Containerfile").read_bytes()
-        if not recipe.decode().startswith(f"FROM {BASE_IMAGE}\n"):
-            raise ValueError("Containerfile does not use the selected digest-pinned baseline")
-        (context / "Containerfile").write_bytes(recipe)
-        image_id = staging / "image-id"
         # The build context contains the recipe only, not even the source.
-        subprocess.run([engine, "build", "--platform", "linux/amd64", "--file", str(context / "Containerfile"),
-                        "--iidfile", str(image_id), str(context)], check=True)
-        image = image_id.read_text().strip()
-        if not re.fullmatch(r"sha256:[0-9a-f]{64}", image):
-            raise ValueError("Container engine did not return a valid built image ID")
+        image = build_image(engine, context, (source / "packaging/Containerfile").read_bytes())
         if ":" in str(staging):
             raise ValueError("The output path cannot contain ':' because it is used in container bind mounts")
         run = [engine, "run", "--rm", "--platform", "linux/amd64", "--cap-drop=ALL",

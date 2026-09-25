@@ -1,6 +1,6 @@
 use std::{
     fs,
-    path::{Path, PathBuf},
+    path::PathBuf,
     time::{Duration, Instant},
 };
 
@@ -469,7 +469,10 @@ fn hostile_file_uris_cannot_read_arbitrary_existing_files_and_exec_is_never_run(
     // Reading this as desktop metadata would fail; it is not an application input.
     fs::write(&private, [0xff, 0x00]).unwrap();
     let marker = fixture.root.path().join("command-ran");
-    fixture.pins(&format!("file://{},https://example.invalid/app.desktop,preferred://browser,applications:Safe.desktop", private.display()));
+    fixture.pins(&format!(
+        "{},https://example.invalid/app.desktop,preferred://browser,applications:Safe.desktop",
+        reqwest::Url::from_file_path(&private).unwrap()
+    ));
     fixture.entry(0, "Safe.desktop", &format!(
         "[Desktop Entry]\nType=Application\nName=Safe application\nCategories=Notes;\nExec=sh -c 'touch {}'\nTryExec=/missing/command\nDBusActivatable=true\n",
         marker.display()
@@ -491,7 +494,7 @@ fn hostile_file_uris_cannot_read_arbitrary_existing_files_and_exec_is_never_run(
 #[cfg(unix)]
 #[test]
 fn symlinks_cannot_supply_metadata_from_outside_the_application_directory() {
-    use std::os::unix::fs::symlink;
+    use std::{os::unix::fs::symlink, path::Path};
 
     let fixture = Fixture::new();
     let private = fixture.root.path().join("private.desktop");
@@ -533,6 +536,9 @@ fn declared_shortcut_icons_follow_desktop_entry_priority_and_seed_source_colors(
     let fixture = Fixture::new();
     let user_icon = fixture.root.path().join("user icon.svg");
     let system_icon = fixture.root.path().join("system.svg");
+    // Desktop-entry strings escape backslashes, including Windows fixture paths.
+    let user_icon_field = user_icon.to_string_lossy().replace('\\', "\\\\");
+    let system_icon_field = system_icon.to_string_lossy().replace('\\', "\\\\");
     for (path, color) in [(&user_icon, "#20b050"), (&system_icon, "#ff0000")] {
         fs::write(path, format!("<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16'><rect width='16' height='16' fill='{color}'/></svg>")).unwrap();
     }
@@ -542,7 +548,7 @@ fn declared_shortcut_icons_follow_desktop_entry_priority_and_seed_source_colors(
         &format!(
             "{}Icon={}\n",
             application("System mail", "Email;"),
-            system_icon.display()
+            system_icon_field
         ),
     );
     fixture.entry(
@@ -551,8 +557,8 @@ fn declared_shortcut_icons_follow_desktop_entry_priority_and_seed_source_colors(
         &format!(
             "{}Icon={}\n[Desktop Action Wrong]\nIcon={}\n",
             application("My mail", "Email;"),
-            user_icon.display(),
-            system_icon.display()
+            user_icon_field,
+            system_icon_field
         ),
     );
     fixture.pins("applications:Mail.desktop");

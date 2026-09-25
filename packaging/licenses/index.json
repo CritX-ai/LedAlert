@@ -176,6 +176,22 @@
         "commit": "f40dfc01a0c0e76de535969f82fb35e19513737d"
       }
     ],
+    "accesskit_consumer-0.35.0": [
+      {
+        "file": "accesskit-1bbcf100942b/LICENSE-MIT",
+        "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+        "source": "https://raw.githubusercontent.com/AccessKit/accesskit/1bbcf100942bac96c2c3a4a91cb67b0b20201a24/LICENSE-MIT",
+        "repo": "AccessKit/accesskit",
+        "commit": "1bbcf100942bac96c2c3a4a91cb67b0b20201a24"
+      },
+      {
+        "file": "accesskit-1bbcf100942b/LICENSE-APACHE",
+        "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "source": "https://raw.githubusercontent.com/AccessKit/accesskit/1bbcf100942bac96c2c3a4a91cb67b0b20201a24/LICENSE-APACHE",
+        "repo": "AccessKit/accesskit",
+        "commit": "1bbcf100942bac96c2c3a4a91cb67b0b20201a24"
+      }
+    ],
     "accesskit_consumer-0.36.0": [
       {
         "file": "accesskit-f40dfc01a0c0/LICENSE-MIT",
@@ -208,6 +224,22 @@
         "commit": "f40dfc01a0c0e76de535969f82fb35e19513737d"
       }
     ],
+    "accesskit_windows-0.32.1": [
+      {
+        "file": "accesskit-1bbcf100942b/LICENSE-MIT",
+        "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+        "source": "https://raw.githubusercontent.com/AccessKit/accesskit/1bbcf100942bac96c2c3a4a91cb67b0b20201a24/LICENSE-MIT",
+        "repo": "AccessKit/accesskit",
+        "commit": "1bbcf100942bac96c2c3a4a91cb67b0b20201a24"
+      },
+      {
+        "file": "accesskit-1bbcf100942b/LICENSE-APACHE",
+        "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "source": "https://raw.githubusercontent.com/AccessKit/accesskit/1bbcf100942bac96c2c3a4a91cb67b0b20201a24/LICENSE-APACHE",
+        "repo": "AccessKit/accesskit",
+        "commit": "1bbcf100942bac96c2c3a4a91cb67b0b20201a24"
+      }
+    ],
     "accesskit_winit-0.32.2": [
       {
         "file": "accesskit-1bbcf100942b/LICENSE-APACHE",
@@ -215,6 +247,15 @@
         "source": "https://raw.githubusercontent.com/AccessKit/accesskit/1bbcf100942bac96c2c3a4a91cb67b0b20201a24/LICENSE-APACHE",
         "repo": "AccessKit/accesskit",
         "commit": "1bbcf100942bac96c2c3a4a91cb67b0b20201a24"
+      }
+    ],
+    "clipboard-win-5.4.1": [
+      {
+        "file": "clipboard-win-3b27cf2bfd1a/LICENSE",
+        "sha256": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566",
+        "source": "https://raw.githubusercontent.com/DoumanAsh/clipboard-win/3b27cf2bfd1adcfa6e0264eb51c1025ddaf0f342/LICENSE",
+        "repo": "DoumanAsh/clipboard-win",
+        "commit": "3b27cf2bfd1adcfa6e0264eb51c1025ddaf0f342"
       }
     ],
     "gl_generator-0.14.0": [

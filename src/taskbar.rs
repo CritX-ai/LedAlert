@@ -10,21 +10,29 @@ use std::{
 
 use anyhow::{Context, Result, bail, ensure};
 
+#[cfg(not(target_os = "windows"))]
+use crate::app_icons::{absolute_env_path, data_directories};
 use crate::{
-    app_icons::{self, IconResolver, absolute_env_path, data_directories},
+    app_icons::{self, IconResolver},
     config::{Rule, RuleOptions},
 };
+
+/// Portable Taskband parsing and canonical Windows application identities.
+pub mod windows;
+#[cfg(target_os = "windows")]
+#[allow(unsafe_code)]
+mod windows_native;
 
 const MAX_APPLETS_BYTES: usize = 1024 * 1024;
 const MAX_DESKTOP_BYTES: usize = 64 * 1024;
 const MAX_LAUNCHERS: usize = 64;
-// Config's application and human-readable labels have the same byte limit.
+// Human-readable labels and KDE metadata retain the conservative byte limit.
 const MAX_LABEL_BYTES: usize = 128;
 const MAX_PATH_PROBES: usize = 512;
 
 #[derive(Clone, Debug)]
 pub struct PinnedApp {
-    /// Routing ID: the desktop file ID with exactly its final suffix removed.
+    /// Routing ID: Linux desktop ID without its final suffix, or Windows AUMID.
     pub id: String,
     pub name: String,
     pub kind: AppKind,
@@ -43,7 +51,9 @@ pub enum AppKind {
 }
 
 /// Blocking metadata discovery; call from a worker thread, never the UI thread.
-/// No launcher, shell expansion, desktop service or application is invoked.
+/// Reads KDE launcher metadata or the current Windows user's Taskband pins.
+/// Never invokes a launcher or executes a pinned target.
+#[cfg(not(target_os = "windows"))]
 pub fn discover() -> Result<Vec<PinnedApp>> {
     let home = absolute_env_path("HOME");
     let config = absolute_env_path("XDG_CONFIG_HOME")
@@ -56,6 +66,13 @@ pub fn discover() -> Result<Vec<PinnedApp>> {
     )
 }
 
+/// Read the current Windows user's actual Taskband pins on a worker thread.
+#[cfg(target_os = "windows")]
+pub fn discover() -> Result<Vec<PinnedApp>> {
+    windows_native::discover()
+}
+
+#[cfg(not(target_os = "windows"))]
 fn application_directories() -> Vec<PathBuf> {
     data_directories()
         .into_iter()
@@ -67,8 +84,15 @@ fn application_directories() -> Vec<PathBuf> {
 /// Call from a worker, never the UI thread. This neither launches nor enumerates
 /// applications. The ID is a routing ID, not a URI or desktop filename: exactly
 /// one `.desktop` suffix is appended, even if the routing ID ends in `.desktop`.
+#[cfg(not(target_os = "windows"))]
 pub fn application(id: &str) -> Result<Option<PinnedApp>> {
     application_at(id, &application_directories())
+}
+
+/// Worker-only lookup of an exact Windows AppUserModelID, pinned or otherwise.
+#[cfg(target_os = "windows")]
+pub fn application(id: &str) -> Result<Option<PinnedApp>> {
+    windows_native::application(id)
 }
 
 /// Worker-only lookup with explicit application-directory priority. The same

@@ -1717,7 +1717,7 @@ dependencies = [
 
 [[package]]
 name = "ledalert"
-version = "0.2.1"
+version = "0.3.0-alpha"
 dependencies = [
  "anyhow",
  "eframe",
@@ -1730,6 +1730,8 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tokio",
+ "windows",
+ "windows-future",
  "zbus",
 ]
 

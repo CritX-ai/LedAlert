@@ -1,5 +1,5 @@
 //! Versioned, validated room configuration. Runtime permission is never persisted.
-use anyhow::{Context, Result, bail, ensure};
+use anyhow::{Context, Result, ensure};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
@@ -13,6 +13,7 @@ pub const MAX_LEDS: usize = 8192;
 pub const MAX_SCREENS: usize = 16;
 pub const MAX_POINTS: usize = 64;
 pub const MAX_RULES: usize = 128;
+pub const MAX_APPLICATION_BYTES: usize = 512;
 pub const MAX_ROOM_VERTICES: usize = 12;
 pub const CURRENT_CONFIG_VERSION: u32 = 2;
 const MAX_CONFIG_BYTES: u64 = 256 * 1024;
@@ -359,7 +360,7 @@ impl Config {
         );
         let mut applications = HashSet::new();
         for rule in &self.rules {
-            validate_label(&rule.application, "Application")?;
+            validate_application(&rule.application)?;
             ensure!(
                 rule.options.minimum_urgency <= 2,
                 "Minimum urgency must be low, normal or critical"
@@ -475,6 +476,7 @@ impl Config {
 
 /// Shared same-directory replacement for setup and non-authoritative UI preferences.
 pub(crate) fn write_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
+    #[cfg(unix)]
     use std::os::unix::fs::OpenOptionsExt;
     let parent = path
         .parent()
@@ -485,13 +487,22 @@ pub(crate) fn write_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
     let mut temp_name = name.to_os_string();
     temp_name.push(format!(".{}.tmp", std::process::id()));
     let temp = parent.join(temp_name);
-    let mut file = OpenOptions::new().write(true).create_new(true).mode(0o600).open(&temp)
-        .context("Cannot create temporary setup data; remove a stale .tmp file if a previous save crashed")?;
+    let mut options = OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    options.mode(0o600);
+    let mut file = options.open(&temp).context(
+        "Cannot create temporary setup data; remove a stale .tmp file if a previous save crashed",
+    )?;
     let result = (|| -> Result<()> {
         file.write_all(bytes)?;
         file.write_all(b"\n")?;
         file.sync_all()?;
+        // Windows cannot reliably replace an open destination/source without
+        // delete sharing. Close our handle before the same-directory rename.
+        drop(file);
         fs::rename(&temp, path)?;
+        #[cfg(unix)]
         File::open(parent)?.sync_all()?;
         Ok(())
     })();
@@ -499,6 +510,17 @@ pub(crate) fn write_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
         let _ = fs::remove_file(&temp);
     }
     result.context("Cannot persist setup data")
+}
+
+fn validate_application(value: &str) -> Result<()> {
+    ensure!(
+        !value.trim().is_empty()
+            && value == value.trim()
+            && value.len() <= MAX_APPLICATION_BYTES
+            && !value.chars().any(char::is_control),
+        "Application must be 1–{MAX_APPLICATION_BYTES} bytes with no control characters or surrounding spaces"
+    );
+    Ok(())
 }
 
 fn validate_label(value: &str, name: &str) -> Result<()> {
@@ -512,6 +534,16 @@ fn validate_label(value: &str, name: &str) -> Result<()> {
     Ok(())
 }
 
+#[cfg(windows)]
+pub fn default_path() -> Result<PathBuf> {
+    let base = std::env::var_os("APPDATA")
+        .map(PathBuf::from)
+        .filter(|path| path.is_absolute())
+        .context("Set an absolute APPDATA, or supply --config PATH")?;
+    Ok(base.join("LedAlert").join("config.json"))
+}
+
+#[cfg(not(windows))]
 pub fn default_path() -> Result<PathBuf> {
     if let Some(value) = std::env::var_os("XDG_CONFIG_HOME") {
         let base = PathBuf::from(value);
@@ -525,5 +557,5 @@ pub fn default_path() -> Result<PathBuf> {
             return Ok(base.join(".config/ledalert/config.json"));
         }
     }
-    bail!("Set HOME or an absolute XDG_CONFIG_HOME, or supply --config PATH")
+    anyhow::bail!("Set HOME or an absolute XDG_CONFIG_HOME, or supply --config PATH")
 }

@@ -2,7 +2,7 @@
 
 The details behind your setup. New here? Follow [Room](guide/room.md) → [Displays](guide/displays.md) → [Strip](guide/strip.md) → [Rules](guide/rules.md). Something stuck? [Troubleshoot by symptom](guide/troubleshooting.md).
 
-LedAlert supports **Linux x86_64, KDE Plasma on Wayland, and one WLED RGB controller with its mapped strip**. See [Compatibility](support.md) for requirements and limits.
+LedAlert supports **Windows 11 x64** and **Linux x86_64 with KDE Plasma on Wayland**, with one WLED RGB controller and its mapped strip. See [Compatibility](support.md) for requirements and limits.
 
 ## Editing and rules
 

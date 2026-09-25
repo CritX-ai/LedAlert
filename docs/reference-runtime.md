@@ -44,7 +44,7 @@ Release asks WLED to leave realtime mode; its own effect may resume. Failed rele
 
 ## Desktop integration and privacy
 
-### What LedAlert reads
+### Linux metadata
 
 - **Notifications:** passive `org.freedesktop.DBus.Monitoring.BecomeMonitor` observes `Notify`, replies from the current daemon and `NotificationClosed`. KDE keeps notification ownership and delivery. Caller identity and message serial correlate replies; notification replacement IDs come from the actual reply.
 - **Routing:** canonical `desktop-entry` prefix before app name, preserving legitimate suffixes. Observed IDs appear in **Add app** and are saved only when you create a rule. See the [notification hints](https://specifications.freedesktop.org/notification/latest/hints.html) and [MPRIS DesktopEntry](https://specifications.freedesktop.org/mpris/latest/Media_Player.html#Property:DesktopEntry) specifications.
@@ -53,11 +53,22 @@ Release asks WLED to leave realtime mode; its own effect may resume. Failed rele
 
 Only bounded app metadata, urgency, notification ID and in-memory receipt time enter the renderer. Notification summaries, bodies, actions, images and song metadata are not retained or logged. Wire messages necessarily exist transiently in the D-Bus library before decoding; shortcut icons are separate local files.
 
+### Windows metadata
+
+- **Notifications:** the [Windows notification listener](https://learn.microsoft.com/en-us/windows/apps/develop/notifications/app-notifications/notification-listener) requires package identity, the MSIX `userNotificationListener` capability and explicit foreground user consent. LedAlert reads only notification ID, creation time and application AUMID—not `Notification`, visual/text fields, images or actions. Creation time is mapped to monotonic receipt time so delayed snapshots cannot replay events from before an unlock or Quiet-mode boundary.
+- **Lifecycle:** current notifications are reconciled every **250 ms**, with optional event wakeups. Startup/reconnect/permission restoration establishes a silent baseline. Replacements use ID plus creation time; removal from notification center dismisses a tracked light. Urgency is **normal (1)**; Windows supplies no freedesktop urgency or close reason. A toast that disappears entirely between snapshots cannot be reconstructed.
+- **Media:** up to **32** Windows system-media sessions; only playback status and source AUMID are read. Failures and stale observations clear playback markers.
+- **Lock:** the current WTS session's connection/lock state is polled every **250 ms**. Disconnected sessions inhibit lighting; unknown or older-than-one-second state fails closed.
+- **Taskbar:** bounded, read-only Explorer Taskband v3 records identify actual pins. Shell metadata resolves their current names, exact IDs and icons without invoking shortcuts or applications. Start inventory is never substituted for pins.
+- **Displays:** active Windows display paths provide stable monitor identities and already-oriented pixel geometry. Mixed-DPI displays remain in a single coordinate space; imported geometry is a visual starting point, not a physical measurement.
+
+Windows notification snapshots are bounded to **4,096** metadata records and the consumer queue to **64** events. Queue loss, ambiguous IDs, unavailable snapshots or permission loss invalidate the notification generation and clear uncertain lights. Native async queries have a **two-second** deadline. Media observations expire after **three seconds**.
+
 ### Limits and failures
 
-Notifications over **64 KiB** or with invalid app metadata are rejected. Consumer and pending-call queues hold at most **64** each, with a **five-second** reply deadline. Lost, malformed or overflowing lifecycle observations clear tracked lights. Events older than **one second** at consumption are discarded.
+On Linux, notifications over **64 KiB** or with invalid app metadata are rejected. Consumer and pending-call queues hold at most **64** each, with a **five-second** reply deadline. On both platforms, lost, malformed or overflowing lifecycle observations clear tracked lights. Events older than **one second** at consumption are discarded.
 
-Services reconnect with bounded backoff. **Settings → Integration status** shows errors; lock/output problems remain in the status bar. LedAlert does not change a denied monitoring policy. Display discovery runs off the GUI thread with a three-second deadline and bounded response.
+Services reconnect with bounded delays. **Settings → Integration status** shows errors; lock/output problems remain in the status bar. LedAlert does not bypass denied access. Discovery runs off the GUI thread; KDE's external display query has a three-second deadline and bounded response, and Windows native discovery has bounded topology buffers.
 
 Application IDs are routing hints, not authenticated identities. LedAlert is ambient awareness—not a safety alarm or confidentiality boundary. Quieting releases control; it cannot guarantee darkness when WLED or another controller supplies an effect.
 

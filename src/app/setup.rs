@@ -270,7 +270,7 @@ impl AppState {
         ui.horizontal(|ui| {
             ui.heading("Displays");
             ui.with_layout(Layout::right_to_left(Align::Center),|ui| {
-                if ui.add_enabled(self.display_scan.is_none(),egui::Button::new(if self.display_scan.is_some(){"Detecting…"}else{"Refresh"})).on_hover_text("Read KDE's current setup. Never reconfigures displays or moves saved placements.").clicked(){self.scan_displays();}
+                if ui.add_enabled(self.display_scan.is_none(),egui::Button::new(if self.display_scan.is_some(){"Detecting…"}else{"Refresh"})).on_hover_text("Read the desktop's current setup. Never reconfigures displays or moves saved placements.").clicked(){self.scan_displays();}
             });
         });
         if let Some(error) = &self.display_error {

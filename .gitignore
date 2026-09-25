@@ -2,6 +2,7 @@
 /target/
 /dist/
 /release-work/
+/private-release-handoff/
 
 # Design, concept, planning, and local verification material are not product docs.
 /DESIGN.md

@@ -6,16 +6,35 @@
 set -e
 cd "$(git rev-parse --show-toplevel)"
 
-python3 packaging/verify.py --require-distribution
+PYTHON=
+for candidate in python3 python; do
+    if "$candidate" -c 'import sys; sys.exit(sys.version_info < (3, 11))' >/dev/null 2>&1; then
+        PYTHON=$candidate
+        break
+    fi
+done
+if [ -z "$PYTHON" ]; then
+    echo "Python 3.11+ is required (python3 or python on PATH)." >&2
+    exit 1
+fi
+"$PYTHON" packaging/verify.py --require-distribution
 
 staged=$(git diff --cached --name-only --diff-filter=ACMR)
 
 if printf '%s\n' "$staged" | grep -qE '^(README\.md|RELEASE\.md|CHANGELOG\.md|SECURITY\.md|docs/)'; then
     echo "==> Documentation build (documentation inputs staged)"
-    python3 packaging/docs.py --container podman --base-url http://127.0.0.1:8766/ --output dist/docs
+    if command -v podman >/dev/null 2>&1; then
+        container=podman
+    elif command -v docker >/dev/null 2>&1; then
+        container=docker
+    else
+        echo "Documentation verification requires Podman or Docker plus Pandoc; no checks were skipped." >&2
+        exit 1
+    fi
+    "$PYTHON" packaging/docs.py --container "$container" --base-url http://127.0.0.1:8766/ --output dist/docs
 fi
 
-if printf '%s\n' "$staged" | grep -qE '^(Cargo\.(toml|lock)|src/|tests/|assets/|packaging/)'; then
+if printf '%s\n' "$staged" | grep -qE '^(Cargo\.(toml|lock)|src/|tests/|examples/|assets/|packaging/)'; then
     echo "==> Cargo package listing (crate inputs staged)"
     cargo package --list --allow-dirty > /dev/null
 fi

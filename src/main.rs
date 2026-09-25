@@ -21,7 +21,7 @@ fn run() -> Result<()> {
         match argument.as_str() {
             "--help" | "-h" => {
                 println!(
-                    "LedAlert — spatial desktop notifications for WLED\n\nUsage: ledalert [--config PATH] [gui|check-config|probe]\n\n  gui           Open the native room workbench (default); lighting starts disabled\n  check-config  Validate an existing configuration without desktop or device access\n  probe         Read WLED capabilities; does not send pixels or change settings\n  --config PATH Use a specific configuration file\n  --version     Print the application version\n\nConfiguration: $XDG_CONFIG_HOME/ledalert/config.json, or ~/.config/ledalert/config.json\nNo daemon, autostart or background installation is performed."
+                    "LedAlert — spatial desktop notifications for WLED\n\nUsage: ledalert [--config PATH] [gui|check-config|probe]\n\n  gui           Open the native room workbench (default); lighting starts disabled\n  check-config  Validate an existing configuration without desktop or device access\n  probe         Read WLED capabilities; does not send pixels or change settings\n  --config PATH Use a specific configuration file\n  --version     Print the application version\n\nConfiguration: Windows: %APPDATA%\\LedAlert\\config.json\n               Linux: $XDG_CONFIG_HOME/ledalert/config.json, or ~/.config/ledalert/config.json\nNo daemon, autostart or background installation is performed."
                 );
                 return Ok(());
             }

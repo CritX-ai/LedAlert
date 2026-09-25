@@ -96,6 +96,8 @@ pub struct LedAlertApp {
     state: Arc<Mutex<AppState>>,
     stop: mpsc::SyncSender<()>,
     worker: Option<JoinHandle<()>>,
+    #[cfg(windows)]
+    notification_permission: crate::desktop::NotificationPermission,
 }
 
 struct AppState {
@@ -152,6 +154,8 @@ struct AppState {
     quiet: bool,
     notification_gate: runtime::NotificationGate,
     desktop: DesktopMonitor,
+    #[cfg(windows)]
+    notification_permission_requested: bool,
     desktop_state: DesktopState,
     desktop_poll: Instant,
     output: WledOutput,
@@ -272,6 +276,8 @@ impl AppState {
             quiet: false,
             notification_gate: runtime::NotificationGate::new(Instant::now()),
             desktop,
+            #[cfg(windows)]
+            notification_permission_requested: false,
             desktop_state,
             desktop_poll: Instant::now(),
             output: WledOutput::start()?,
@@ -1026,6 +1032,10 @@ impl AppState {
             ui.add_space(14.0);
             egui::CollapsingHeader::new("Integration status").show(ui,|ui|{
                 ui.label(&self.desktop_state.notification_status);ui.label(&self.desktop_state.media_status);ui.label(&self.desktop_state.lock_status);
+                #[cfg(windows)]
+                if ui.button("Allow Windows notifications").on_hover_text("Ask Windows for access to notification app identities. Requires the installed MSIX package; lighting stays disabled until you enable it separately.").clicked() {
+                    self.notification_permission_requested = true;
+                }
                 if let Err(error) = self.valid() { ui.colored_label(ERROR, error); }
                 if let Some(error) = self.output.snapshot().error { ui.colored_label(ERROR, error); }
                 ui.label("Lock or unavailable lock status always pauses lighting.");
@@ -1053,10 +1063,12 @@ impl AppState {
 
 impl eframe::App for LedAlertApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        self.state
-            .lock()
-            .expect("Application state lock poisoned")
-            .ui(ui);
+        let mut state = self.state.lock().expect("Application state lock poisoned");
+        state.ui(ui);
+        #[cfg(windows)]
+        if std::mem::take(&mut state.notification_permission_requested) {
+            self.notification_permission.request_access(&state.desktop);
+        }
     }
 }
 

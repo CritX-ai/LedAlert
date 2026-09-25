@@ -1,6 +1,8 @@
 //! Every scenario executes in a child test process on an explicitly configured private bus.
 //! No test changes the parent environment or connects to the user's desktop session.
 
+#![cfg(target_os = "linux")]
+
 use std::{
     collections::HashMap,
     num::NonZeroU32,

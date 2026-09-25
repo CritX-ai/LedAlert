@@ -135,14 +135,6 @@ th { background: var(--floor); font-weight: 650; text-align: left; }
 th, td { padding: 12px; vertical-align: top; border: 1px solid var(--line); }
 td { min-width: 120px; }
 td:first-child { color: var(--amber); }
-.support-matrix th[scope="row"] { width: 66%; background: transparent; font-weight: 550; }
-.support-matrix small { display: block; margin-top: 4px; color: var(--muted); font-weight: 400; line-height: 1.5; }
-.support-matrix td { min-width: 0; vertical-align: middle; }
-.support-status { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; font-weight: 600; }
-.support-status svg { width: 20px; height: 20px; }
-.support-status.supported { color: var(--cyan); }
-.support-status.unverified { color: var(--amber); }
-.support-status.unavailable { color: var(--muted); }
 .platform-mark { display: inline-flex; margin-right: 10px; color: var(--muted); }
 .platform-mark img { display: inline-block; width: 20px; height: 20px; border: 0; margin: 0; background: none; }
 .prose img[src*="img.shields.io"], .prose img[src*="badge.svg"] { display: inline-block; width: auto; height: 20px; vertical-align: middle; }
@@ -211,9 +203,7 @@ td:first-child { color: var(--amber); }
   .prose h2 { font-size: 1.45rem; }
   .prose blockquote { padding: 18px; }
   .table-scroll table { min-width: 560px; }
-  .table-scroll .support-matrix { min-width: 0; }
-  .support-matrix th, .support-matrix td { padding: 10px; }
-  .support-status { gap: 6px; font-size: .8rem; }
+  .table-scroll table:has(> thead > tr > th:nth-child(2):last-child) { min-width: 0; }
   .page-footer { gap: 12px; margin-top: 44px; }
   .page-footer > img { width: 48px; height: 48px; }
   .page-footer strong { font-size: .9rem; }

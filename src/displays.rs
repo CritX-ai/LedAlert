@@ -1,4 +1,4 @@
-//! Read-only KScreen discovery and editable, non-physical desktop-layout imports.
+//! Read-only desktop discovery and editable, non-physical layout imports.
 
 use std::collections::HashSet;
 
@@ -7,6 +7,8 @@ use serde_json::Value;
 
 use crate::config::{Config, MAX_SCREENS, Point, Screen};
 
+pub mod windows;
+
 const MAX_OUTPUT_BYTES: usize = 1024 * 1024;
 const MAX_OUTPUTS: usize = 128;
 const MAX_LABEL_BYTES: usize = 128;
@@ -14,7 +16,7 @@ const MAX_DIMENSION: f32 = 32_768.0;
 const MAX_COORDINATE: f32 = 131_072.0;
 const ROOM_FRACTION: f32 = 0.65;
 
-/// Logical desktop coordinates, not physical monitor measurements.
+/// Desktop coordinates (KDE logical units or Windows pixels), not physical measurements.
 #[derive(Clone, Debug, PartialEq)]
 pub struct DetectedDisplay {
     pub connector: String,
@@ -121,9 +123,14 @@ pub fn discover() -> Result<Vec<DetectedDisplay>> {
     }
 }
 
-#[cfg(not(unix))]
+#[cfg(windows)]
 pub fn discover() -> Result<Vec<DetectedDisplay>> {
-    anyhow::bail!("Display discovery supports KDE on Unix with kscreen-doctor only")
+    windows::discover()
+}
+
+#[cfg(not(any(unix, windows)))]
+pub fn discover() -> Result<Vec<DetectedDisplay>> {
+    anyhow::bail!("Display discovery is available on Windows and KDE")
 }
 
 /// Parse the JSON emitted by `kscreen-doctor -j`. Inactive outputs are ignored;

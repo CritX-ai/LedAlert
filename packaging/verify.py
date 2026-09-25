@@ -133,7 +133,7 @@ def inspect_crate(root: Path, path: Path) -> None:
     expected = {
         name: source for name, source in release.source_files(root).items()
         if name in fixed or
-        (name.startswith(("src/", "tests/")) and name.endswith(".rs")) or
+        (name.startswith(("src/", "tests/", "examples/")) and name.endswith(".rs")) or
         name.startswith("packaging/licenses/")
     }
     require(fixed.issubset(expected), "Missing crate source, embedded asset or license")
@@ -168,8 +168,7 @@ def check_crate(root: Path) -> Path:
 def inspect_artifacts(root: Path, output: Path) -> tuple[dict, dict, dict]:
     """Validate the pair against this source tree before extracting or executing it."""
     version = tomllib.loads((root / "Cargo.toml").read_text())["package"]["version"]
-    require(re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?", version) is not None,
-            "Unsafe package version")
+    release.version_info(version)
     prefixes = [f"ledalert-{version}-linux-x86_64", f"ledalert-{version}-source"]
     names = [prefix + ".tar.gz" for prefix in prefixes]
     crate_name = f"ledalert-{version}.crate"
@@ -356,7 +355,7 @@ def check_source(root: Path) -> None:
             (["cargo", "fmt", "--all", "--", "--check"], 120),
             (["cargo", "clippy", "--all-targets", "--locked", "--", "-D", "warnings"], 1800),
             (["cargo", "test", "--locked"], 1800),
-            ([sys.executable, "-B", "-m", "unittest", "discover", "-s", "packaging", "-p", "test_release.py"], 120),
+            ([sys.executable, "-B", "-m", "unittest", "discover", "-s", "packaging", "-p", "test_*.py"], 120),
         ]:
             run(args, root, env, timeout)
     report("source", status="passed")

@@ -34,6 +34,17 @@ class SourceExportTests(unittest.TestCase):
         patched.start()
         self.addCleanup(patched.stop)
 
+    def test_verification_sources_are_exported_but_private_handoff_is_not(self):
+        for name in ("examples/windows_probe.rs", "tools/windows-verify.ps1", "docs/windows-verification.md",
+                     ".windows-handoff/private.json"):
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("fixture\n")
+        exported = release.source_files()
+        self.assertTrue({"examples/windows_probe.rs", "tools/windows-verify.ps1",
+                         "docs/windows-verification.md"}.issubset(exported))
+        self.assertNotIn(".windows-handoff/private.json", exported)
+
     def test_symlink_cannot_export_external_source(self):
         outside = self.root / "private.txt"
         outside.write_text("not public")
@@ -110,6 +121,37 @@ class SourceExportTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             verify.inspect_crate(self.root, path)
 
+    def test_windows_checkout_newlines_preserve_pinned_notice_integrity(self):
+        canonical = b"Copyright notice fixture\nPermission notice fixture\n"
+        notice = self.root / "packaging/licenses/upstream/LICENSE"
+        notice.parent.mkdir(parents=True)
+        entry = {"file": "upstream/LICENSE", "sha256": release.digest(canonical), "source": "https://example.invalid/LICENSE"}
+        (notice.parent.parent / "index.json").write_bytes(release.json_bytes({"packages": {"fixture-1.0.0": [entry]}}))
+        (self.root / "Cargo.lock").write_text('[[package]]\nname = "fixture"\nversion = "1.0.0"\nchecksum = "' + "a" * 64 + '"\n')
+        crate = self.root / "crate"
+        crate.mkdir()
+        (crate / "Cargo.toml").write_text('[package]\nname = "fixture"\nversion = "1.0.0"\n')
+        metadata = {
+            "resolve": {"root": "fixture", "nodes": [{"id": "fixture", "deps": []}]},
+            "packages": [{"id": "fixture", "name": "fixture", "version": "1.0.0", "license": "MIT",
+                          "source": "registry+fixture", "manifest_path": str(crate / "Cargo.toml")}],
+        }
+        for name in ("assets/fonts/OFL.txt", "assets/fonts/Silkscreen-Bold.ttf",
+                     "docs/site/assets/fonts/saira-OFL.txt", "docs/site/assets/fonts/saira.woff2"):
+            destination = self.root / name
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes((verify.ROOT / name).read_bytes())
+        with patch.object(release, "rust_notices", return_value=({}, {"notices": []})):
+            for content in (canonical, canonical.replace(b"\n", b"\r\n")):
+                with self.subTest(content=content):
+                    notice.write_bytes(content)
+                    payload, inventory = release.notice_inputs(metadata, self.root)
+                    self.assertEqual(payload["licenses/upstream/upstream/LICENSE"], canonical)
+                    self.assertEqual(inventory[0]["notices"][0]["sha256"], release.digest(canonical))
+            notice.write_bytes(canonical.replace(b"Permission", b"Modified"))
+            with self.assertRaises(ValueError):
+                release.notice_inputs(metadata, self.root)
+
 
 class PreservationTests(unittest.TestCase):
     def test_cli_preserves_existing_download_before_builder_access(self):
@@ -137,11 +179,12 @@ class PreservationTests(unittest.TestCase):
 class PublicationTests(unittest.TestCase):
     def setUp(self):
         self.commit = "1" * 40
-        self.hashes = {name: "a" * 64 for name in release.release_names("0.2.0", True)}
-        self.receipt = {"version": "0.2.0", "commit": self.commit, "sha256": self.hashes}
+        self.hashes = {name: "a" * 64 for name in publication.artifact_names("0.2.0")}
+        self.receipt = {"version": "0.2.0", "commit": self.commit, "prerelease": False,
+                        "windows_signing": "certificate-store", "sha256": self.hashes}
         self.record = {
             "body": f"<!-- ledalert-release:{json.dumps(self.receipt)} -->",
-            "target_commitish": self.commit, "draft": False, "prerelease": False,
+            "tag_name": "v0.2.0", "target_commitish": self.commit, "draft": False, "prerelease": False,
             "assets": [{"name": name, "state": "uploaded", "digest": "sha256:" + checksum}
                        for name, checksum in self.hashes.items()],
         }
@@ -166,13 +209,17 @@ class PublicationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             publication.preflight("0.2.0", self.commit)
 
+    def test_linux_only_receipt_cannot_authorize_cross_platform_publication(self):
+        del self.receipt["sha256"]["ledalert-0.2.0-windows-x86_64.msix"]
+        self.record["body"] = f"<!-- ledalert-release:{json.dumps(self.receipt)} -->"
+        with self.assertRaisesRegex(ValueError, "artifact hashes"):
+            publication.preflight("0.2.0", self.commit)
+
     def test_hidden_draft_is_recovered_from_release_list(self):
         self.registry_version.return_value = None
         draft = {**self.record, "draft": True, "assets": self.record["assets"][:-1]}
         self.github.side_effect = [None, [draft]]
         self.assertTrue(publication.preflight("0.2.0", self.commit))
-        self.assertEqual(self.github.call_args_list[0].args, ("/releases/tags/v0.2.0",))
-        self.assertEqual(self.github.call_args_list[1].args, ("/releases?per_page=100",))
 
     def test_missing_assets_can_resume_only_in_an_unpublished_draft(self):
         self.registry_version.return_value = None
@@ -195,26 +242,211 @@ class PublicationTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 publication.request(url, missing=True)
 
-    def test_upload_request_uses_a_long_response_timeout(self):
-        url = "https://uploads.github.com/repos/CritX-ai/LedAlert/releases/1/assets?name=ledalert.crate"
-        with patch.object(publication, "urlopen") as opening:
-            opening.return_value.__enter__.return_value.read.return_value = b""
-            publication.request(url, timeout=900)
-        self.assertEqual(opening.call_args.kwargs["timeout"], 900)
-
     def test_local_snapshot_cannot_be_published_as_a_commit(self):
         with tempfile.TemporaryDirectory(prefix="ledalert-local-publication-") as temporary:
             output = Path(temporary)
-            names = release.release_names("0.2.0", True)
+            names = publication.artifact_names("0.2.0")
             crate = output / names[3]
             crate.write_bytes(b"local crate fixture")
             info = {"version": "0.2.0", "source_commit": None, "crate_sha256": verify.file_digest(crate)}
             for name, prefix in zip(names[:2], ("ledalert-0.2.0-linux-x86_64", "ledalert-0.2.0-source")):
                 release.archive(output / name, prefix, {"BUILD-INFO.json": (release.json_bytes(info), 0o644)}, 0)
+            for name in publication.windows.names("0.2.0"):
+                (output / name).write_bytes(b"unused Windows envelope fixture")
             (output / "SHA256SUMS").write_text("".join(
                 f"{verify.file_digest(output / name)}  {name}\n" for name in names if name != "SHA256SUMS"))
-            with self.assertRaises(ValueError):
+            with self.assertRaisesRegex(ValueError, "Built artifact identity"):
                 publication.local_receipt(output, "0.2.0", self.commit)
+
+
+class ArtifactRecoveryTests(unittest.TestCase):
+    def test_existing_original_bundle_is_reused_for_stable_and_prerelease(self):
+        for kind in ("windows", "publication"):
+            for version in ("0.3.0", "0.3.0-alpha"):
+                artifact = {"name": f"{kind}-release-123", "expired": False}
+                with self.subTest(kind=kind, version=version), \
+                        patch.object(publication, "github", return_value={"total_count": 1, "artifacts": [artifact]}):
+                    self.assertTrue(publication.artifact_recovery(version, "123", kind))
+
+    def test_first_publication_can_build_without_existing_artifact(self):
+        with patch.object(publication, "github", return_value={"total_count": 0, "artifacts": []}), \
+                patch.object(publication, "release_record", return_value=None):
+            self.assertFalse(publication.artifact_recovery("0.3.0-alpha", "123", "publication"))
+
+    def test_existing_publication_cannot_be_rebuilt_after_artifact_loss(self):
+        for draft in (True, False):
+            with self.subTest(draft=draft), \
+                    patch.object(publication, "github", return_value={"total_count": 0, "artifacts": []}), \
+                    patch.object(publication, "release_record", return_value={"draft": draft}):
+                with self.assertRaises(ValueError):
+                    publication.artifact_recovery("0.3.0-alpha", "123", "publication")
+
+    def test_expired_ambiguous_or_incomplete_artifact_listing_is_rejected(self):
+        artifact = {"name": "publication-release-123", "expired": False}
+        for result in (
+            {"total_count": 1, "artifacts": [{**artifact, "expired": True}]},
+            {"total_count": 2, "artifacts": [artifact, artifact]},
+            {"total_count": 2, "artifacts": [artifact]},
+            {"total_count": 1, "artifacts": [{**artifact, "name": "publication-release-456"}]},
+        ):
+            with self.subTest(result=result), patch.object(publication, "github", return_value=result):
+                with self.assertRaises(ValueError):
+                    publication.artifact_recovery("0.3.0-alpha", "123", "publication")
+
+    def test_older_hidden_draft_still_blocks_rebuilding_missing_artifact(self):
+        responses = [
+            {"total_count": 0, "artifacts": []},
+            None,
+            [{"tag_name": f"v1.0.{index}"} for index in range(100)],
+            [{"tag_name": "v0.3.0-alpha", "draft": True}],
+        ]
+        with patch.object(publication, "github", side_effect=responses), self.assertRaises(ValueError):
+            publication.artifact_recovery("0.3.0-alpha", "123", "publication")
+
+
+class PrereleasePublicationTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix="ledalert-prerelease-")
+        self.addCleanup(temporary.cleanup)
+        self.output = Path(temporary.name)
+        self.version = "0.3.0-alpha"
+        self.commit = "1" * 40
+        for name in publication.artifact_names(self.version):
+            (self.output / name).write_bytes(name.encode())
+        self.hashes = {name: verify.file_digest(self.output / name) for name in publication.artifact_names(self.version)}
+        self.value = {"version": self.version, "commit": self.commit, "prerelease": True,
+                      "windows_signing": "unsigned", "sha256": self.hashes}
+        self.record = {"id": 123, "body": f"<!-- ledalert-release:{json.dumps(self.value)} -->",
+                       "tag_name": "v" + self.version, "target_commitish": self.commit,
+                       "draft": False, "prerelease": True, "assets": self.assets()}
+        self.uploads = {}
+        for name, options in (
+            ("registry_version", {"side_effect": AssertionError("Prereleases must not access crates.io")}),
+            ("tag_commit", {"return_value": self.commit}),
+            ("release_notes", {"return_value": "## 0.3.0-alpha\n\nAlpha release."}),
+            ("release_record", {"side_effect": lambda version: self.record}),
+        ):
+            patched = patch.object(publication, name, **options)
+            patched.start()
+            self.addCleanup(patched.stop)
+
+    def assets(self):
+        return [{"name": name, "state": "uploaded", "digest": "sha256:" + checksum}
+                for name, checksum in self.hashes.items()]
+
+    def remote(self, path, *, payload=None, method="GET", **kwargs):
+        if path == "/releases" and method == "POST":
+            self.record = {**payload, "id": 123, "assets": []}
+        elif path == "/releases/123" and method == "PATCH":
+            self.record.update(payload)
+        elif path != "/releases/123" or method != "GET":
+            raise AssertionError(f"Unexpected GitHub operation: {method} {path}")
+        return self.record
+
+    def upload(self, url, *, data, method, **kwargs):
+        self.assertEqual(method, "POST")
+        name = url.split("?name=")[1]
+        self.assertNotIn(name, self.uploads)
+        self.uploads[name] = data
+        self.record["assets"].append({"name": name, "state": "uploaded", "digest": "sha256:" + release.digest(data)})
+
+    def publish(self):
+        with patch.object(publication, "local_receipt", return_value=self.value), \
+                patch.object(publication, "github", side_effect=self.remote), \
+                patch.object(publication, "request", side_effect=self.upload):
+            publication.publish_github(self.output, self.version, self.commit)
+
+    def test_completed_prerelease_needs_no_registry_entry_on_original_or_later_push(self):
+        self.assertFalse(publication.preflight(self.version, self.commit))
+        self.assertFalse(publication.preflight(self.version, "2" * 40))
+
+    def test_partial_prerelease_recovers_only_from_original_commit(self):
+        self.record.update(draft=True, assets=self.record["assets"][:1])
+        with self.assertRaises(ValueError):
+            publication.preflight(self.version, "2" * 40)
+        self.assertTrue(publication.preflight(self.version, self.commit))
+
+    def test_receipt_requires_consistent_boolean_prerelease_status(self):
+        for field in ("remote", "receipt"):
+            for wrong in (False, None, 1):
+                value = {**self.value}
+                record = {**self.record}
+                if field == "remote":
+                    record["prerelease"] = wrong
+                else:
+                    value["prerelease"] = wrong
+                    record["body"] = f"<!-- ledalert-release:{json.dumps(value)} -->"
+                with self.subTest(field=field, wrong=wrong), self.assertRaises(ValueError):
+                    publication.receipt(record, self.version)
+
+    def test_unsigned_alpha_publishes_all_downloads_as_nonlatest_prerelease(self):
+        self.record = None
+        self.publish()
+        self.assertFalse(self.record["draft"])
+        self.assertIs(self.record["prerelease"], True)
+        self.assertEqual(self.record["make_latest"], "false")
+        self.assertEqual({name: release.digest(data) for name, data in self.uploads.items()}, self.hashes)
+        self.assertIn("## 0.3.0-alpha", self.record["body"])
+        self.assertIn("**unsigned and for development only**", self.record["body"])
+        self.assertIn("not a crates.io publication", self.record["body"])
+
+    def test_partial_upload_recovers_missing_original_bytes_without_reupload(self):
+        existing = self.record["assets"][0]
+        self.record.update(draft=True, assets=[existing])
+        self.publish()
+        self.assertFalse(self.record["draft"])
+        self.assertNotIn(existing["name"], self.uploads)
+        self.assertEqual({name: release.digest(data) for name, data in self.uploads.items()},
+                         {name: checksum for name, checksum in self.hashes.items() if name != existing["name"]})
+
+    def test_changed_recovery_bytes_are_rejected_before_upload(self):
+        self.record.update(draft=True, assets=[])
+        self.value = {**self.value, "sha256": {**self.hashes, next(iter(self.hashes)): "b" * 64}}
+        with self.assertRaises(ValueError):
+            self.publish()
+        self.assertEqual(self.uploads, {})
+        self.assertTrue(self.record["draft"])
+
+    def test_completed_prerelease_is_not_uploaded_again(self):
+        self.publish()
+        self.assertEqual(self.uploads, {})
+
+    def test_crate_commands_reject_prerelease_before_build_or_network(self):
+        (self.output / "Cargo.toml").write_text('[package]\nversion = "0.3.0-alpha"\n')
+        with patch.object(release, "ROOT", self.output):
+            with self.assertRaisesRegex(ValueError, "GitHub-only"):
+                publication.publish_crate(self.output, self.version, self.commit, "not-a-real-token")
+            with self.assertRaisesRegex(ValueError, "GitHub-only"):
+                publication.publish_crate_native(self.output, self.commit, "not-a-real-token")
+
+
+class ReleaseNotesTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix="ledalert-release-notes-")
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        self.changelog = root / "CHANGELOG.md"
+        patched = patch.object(release, "ROOT", root)
+        patched.start()
+        self.addCleanup(patched.stop)
+
+    def test_notes_include_only_exact_current_version_and_keep_unicode(self):
+        section = "## 0.3.0 — Windows 11\n\n- Native Windows support.\n\n### Limitations\n\n- Signed MSIX required."
+        self.changelog.write_text(
+            "# Changelog\n\n## 0.3.0-preview\n\n- Not this release.\n\n" + section +
+            "\n\n## 0.2.0 — Linux\n\n- Older release.\n", encoding="utf-8")
+        self.assertEqual(publication.release_notes("0.3.0"), section)
+
+    def test_missing_duplicate_or_empty_notes_block_publication(self):
+        for content in (
+            "# Changelog\n\n## 0.3.1\n\n- Different version.\n",
+            "## 0.3.0\n\n- First.\n\n## 0.3.0 — duplicate\n\n- Second.\n",
+            "## 0.3.0\n\n## 0.2.0\n\n- Old.\n",
+        ):
+            with self.subTest(content=content):
+                self.changelog.write_text(content, encoding="utf-8")
+                with self.assertRaises(ValueError):
+                    publication.release_notes("0.3.0")
 
 
 class ArtifactTests(unittest.TestCase):

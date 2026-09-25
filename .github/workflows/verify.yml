@@ -28,6 +28,44 @@ jobs:
       - name: Verify source and local artifacts in the pinned baseline
         run: python3 packaging/release.py --verify --output dist
 
+  windows-verification:
+    name: Windows Server native regressions and unsigned packages (not desktop acceptance)
+    runs-on: windows-2025
+    timeout-minutes: 90
+    steps:
+      - name: Preserve source bytes across build platforms
+        run: git config --global core.autocrlf false
+      - name: Read public source without retained credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ github.sha }}
+      - name: Install pinned Rust and runtime notice inputs
+        run: rustup toolchain install 1.95.0 --profile minimal --component rust-docs --target x86_64-pc-windows-msvc
+      - name: Compile the production-adapter diagnostic example
+        run: cargo +1.95.0 build --locked --example windows_probe --target x86_64-pc-windows-msvc
+      - name: Parse opt-in desktop helper without registering or trusting anything
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Join-Path $pwd 'tools/windows-verify.ps1'), [ref]$tokens, [ref]$parseErrors
+          ) | Out-Null
+          if ($parseErrors.Count -ne 0) { throw 'Windows verification helper has syntax errors' }
+          Write-Output 'Helper parsed only; interactive Windows 11 acceptance is not assessed on this Server runner.'
+      - name: Test native Windows behavior and build unsigned local packages
+        run: python packaging/windows.py --verify --commit "$env:GITHUB_SHA" --output dist/windows
+      - name: Retain local packages without implying signature trust
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-local-${{ github.run_id }}-${{ github.run_attempt }}
+          path: dist/windows/*
+          if-no-files-found: error
+          retention-days: 14
+          overwrite: false
+
   distribution-metadata:
     name: First-party license and crates.io metadata
     runs-on: ubuntu-24.04

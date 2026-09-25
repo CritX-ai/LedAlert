@@ -4,16 +4,16 @@ Displays give rules a destination in the room. They are landmarks—not screen c
 
 ## Import or add a display
 
-A fresh room imports KDE displays automatically when discovery is available. Imported monitors stand upright with their aspect ratios and relative desktop arrangement.
+A fresh room imports Windows or KDE displays automatically when discovery is available. Imported monitors stand upright with their aspect ratios and relative desktop arrangement.
 
 In **Displays**:
 
 - Select a display in the list or in the room to edit it.
-- Use **Refresh** to read KDE's current setup again. It does not reconfigure the desktop or rearrange saved placements.
+- Use **Refresh** to read the desktop's current setup again. It does not reconfigure the desktop or rearrange saved placements.
 - Use **Add manually** when discovery is unavailable or you want to place a display yourself.
 - Choose **Use desktop layout** only when you want to rearrange detected displays to match the desktop. This replaces their placement; **Undo** restores it.
 
-**Refresh** preserves saved names, placements, sizes, angles and rule destinations. Known connectors can refresh aspect ratios; new displays are offered for import, up to **16 displays**. Discovery reads logical geometry, not physical distances: adjust the result to suit your room.
+**Refresh** preserves saved names, placements, sizes, angles and rule destinations. Known connectors can refresh aspect ratios; new displays are offered for import, up to **16 displays**. Discovery reads KDE logical geometry or Windows desktop pixels, not physical distances: adjust the result to suit your room. Windows monitor device paths retain placements across enumeration changes; mixed-DPI and portrait displays are not scaled or rotated twice.
 
 ## Place and orient each monitor
 

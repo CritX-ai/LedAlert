@@ -66,6 +66,8 @@ impl LedAlertApp {
             state,
             stop,
             worker: Some(worker),
+            #[cfg(windows)]
+            notification_permission: Default::default(),
         })
     }
 }
@@ -106,7 +108,7 @@ impl AppState {
                             if self.detected.is_empty() {
                                 self.auto_import = false;
                                 self.display_error = Some(
-                                    "KDE reported no active displays. Add one manually or Refresh."
+                                    "The desktop reported no active displays. Add one manually or Refresh."
                                         .into(),
                                 );
                             } else if !self.auto_import {

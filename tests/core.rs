@@ -64,6 +64,49 @@ fn invalid_save_preserves_previous_config_and_roundtrip_is_exact() {
 }
 
 #[test]
+fn repeated_atomic_saves_replace_existing_configuration_and_preferences() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("設定").join("config.json");
+    let mut config = Config::default();
+    config.save(&path).unwrap();
+    config.room.screens[0].name = "Updated monitor".into();
+    config.save(&path).unwrap();
+    assert_eq!(Config::load(&path).unwrap(), config);
+    let preferences_path = ledalert::preferences::Preferences::path_for(&path).unwrap();
+    let mut preferences = ledalert::preferences::Preferences::default();
+    preferences.save(&preferences_path).unwrap();
+    preferences.hide_tooltips = true;
+    preferences.save(&preferences_path).unwrap();
+    assert!(
+        ledalert::preferences::Preferences::load(&preferences_path)
+            .unwrap()
+            .hide_tooltips
+    );
+    assert_eq!(
+        std::fs::read_dir(path.parent().unwrap()).unwrap().count(),
+        2
+    );
+}
+
+#[test]
+fn multibyte_windows_application_ids_roundtrip_and_route_without_truncation() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("config.json");
+    let mut config = Config::default();
+    let application = format!("{}!App", "通知".repeat(45));
+    config.rules[0].application = application.clone();
+    config.save(&path).unwrap();
+    let restored = Config::load(&path).unwrap();
+    assert_eq!(
+        restored.rule_for(&application).unwrap().application,
+        application
+    );
+    config.rules[0].application = "x".repeat(ledalert::config::MAX_APPLICATION_BYTES + 1);
+    assert!(config.save(&path).is_err());
+    assert_eq!(Config::load(&path).unwrap(), restored);
+}
+
+#[test]
 fn invalid_geometry_and_duplicate_application_rules_are_rejected() {
     let mut config = Config::default();
     config.room.strip[1] = config.room.strip[0];

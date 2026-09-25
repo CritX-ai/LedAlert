@@ -4,17 +4,23 @@ LedAlert's job is simple: give desktop events a useful place in your room. Futur
 
 ## Current status
 
-**Version 0.2 is the first public release**, built for Linux x86_64, KDE Plasma on Wayland and one mapped WLED RGB strip. Room outlines, spatial rules, local previews and explicit lighting controls are available now. See [release notes](../RELEASE.md) and [Compatibility](support.md).
+**0.3.0-alpha is a GitHub prerelease adding Windows 11 x64** alongside Linux x86_64 and KDE Plasma on Wayland. Native notifications, media and lock detection, taskbar suggestions, display import and one mapped WLED RGB strip are implemented. Windows notification access requires package identity and consent; the alpha provides a portable ZIP and an unsigned development MSIX, not a production signed installer. It is not published to crates.io. See [release notes](../RELEASE.md), [Compatibility](support.md) and [Windows verification](windows-verification.md) for the remaining interactive acceptance work.
+
+## Planned 0.3.0 progression
+
+- **Alpha now:** Windows and Linux prerelease with repeatable portable regressions and explicit native Windows smoke tools. Trusted production Windows signing remains an external prerequisite.
+- **Beta next:** add macOS support and verify it on macOS, while continuing Linux and Windows regression checks. macOS support is planned, not available in the alpha; an editor that opens is not sufficient evidence of desktop integration.
+- **Final 0.3.0:** cross-platform polishing after beta, with verification evidence and production signing requirements satisfied.
+
+These are planned release stages, not claims that future platform support or acceptance is complete.
 
 ## Future directions
 
 These are possibilities, **not implemented features or delivery promises**:
 
 - **More Linux desktops:** explore notification and lock-state integration beyond KDE Plasma, while keeping manual setup useful.
-- **Windows:** investigate a notification-focused port with clear user consent before committing to a backend.
 - **More lighting layouts:** consider separate physical runs on one controller, then multiple independent WLED controllers. These need distinct mapping and control behavior.
 - **Matrices:** explore grid mapping and orientation as a later addition; current strip mapping is not first-class matrix support.
-- **macOS:** investigate a supported event source before considering a port. An editor that opens is not equivalent to notification support.
 
 Current [compatibility limits](support.md) still apply.
 

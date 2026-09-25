@@ -1,20 +1,34 @@
 #!/bin/sh
-# Pre-push release gate mirroring .github/workflows/release.yml exactly.
-# A push to main runs the production documentation build and the container
-# verification (including the publishable Cargo package) before publishing
-# to GitHub Releases and crates.io. Blocking the push on the same checks
-# keeps a failing CI run from interrupting an in-flight publication.
-#
-# This is deliberately heavy: it runs the digest-pinned ReGen container and
-# the Debian 12 verification baseline. Skip only with `git push --no-verify`,
-# knowing CI will still enforce all of it.
+# Full release-source gate: documentation and the controlled Linux baseline.
+# This does not publish. It intentionally requires a Linux x86_64 environment
+# with the pinned-builder prerequisites; a Windows-only smoke is not a substitute.
 set -e
 cd "$(git rev-parse --show-toplevel)"
 
+PYTHON=
+for candidate in python3 python; do
+    if "$candidate" -c 'import sys; sys.exit(sys.version_info < (3, 11))' >/dev/null 2>&1; then
+        PYTHON=$candidate
+        break
+    fi
+done
+if [ -z "$PYTHON" ]; then
+    echo "Python 3.11+ is required (python3 or python on PATH)." >&2
+    exit 1
+fi
+if command -v podman >/dev/null 2>&1; then
+    container=podman
+elif command -v docker >/dev/null 2>&1; then
+    container=docker
+else
+    echo "Full verification requires Podman or Docker plus Pandoc; no checks were skipped." >&2
+    exit 1
+fi
+
 echo "==> Production documentation build (pinned ReGen container)"
-python3 packaging/docs.py --container podman --output dist/docs
+"$PYTHON" packaging/docs.py --container "$container" --output dist/docs
 
 echo "==> Source, artifact and Cargo package verification (pinned baseline)"
-python3 packaging/release.py --verify --crate --commit "$(git rev-parse HEAD)" --output "$(mktemp -d dist/release-verify.XXXXXX)"
+"$PYTHON" packaging/release.py --verify --crate --commit "$(git rev-parse HEAD)" --output "$(mktemp -d dist/release-verify.XXXXXX)"
 
 echo "==> Release gate passed"

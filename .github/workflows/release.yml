@@ -1,4 +1,4 @@
-name: Linux and crates.io release
+name: Linux, Windows and crates.io release
 
 on:
   push:
@@ -6,20 +6,24 @@ on:
 
 permissions: {}
 
-# A later push must not interrupt an in-flight external publication. Recovery is
-# a rerun of the original main-push run, never a dispatch against a moving branch.
+# Never interrupt external publication. Recover only the original main-push run.
 concurrency:
   group: ledalert-publication
   cancel-in-progress: false
 
 jobs:
-  release:
+  preflight:
     if: github.repository == 'CritX-ai/LedAlert' && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
-    timeout-minutes: 150
+    timeout-minutes: 10
     environment: release
     permissions:
-      contents: write
+      contents: read
+      actions: read
+    outputs:
+      release: ${{ steps.preflight.outputs.release }}
+      prerelease: ${{ steps.preflight.outputs.prerelease }}
+      recover: ${{ steps.preflight.outputs.recover }}
     steps:
       - name: Read the exact triggering source without retained credentials
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -32,24 +36,132 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 packaging/publish.py preflight --commit "$GITHUB_SHA"
+
+  windows-packages:
+    needs: preflight
+    if: needs.preflight.outputs.release == 'true' && needs.preflight.outputs.recover != 'true'
+    runs-on: windows-2025
+    timeout-minutes: 90
+    environment: release
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Preserve source bytes across build platforms
+        run: git config --global core.autocrlf false
+      - name: Read the exact triggering source without retained credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ github.sha }}
+      - name: Reuse original Windows bytes when recovering this run
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python packaging/publish.py windows-recovery --commit "$env:GITHUB_SHA"
+      - name: Install pinned Rust and runtime notice inputs
+        if: steps.existing.outputs.found != 'true'
+        run: rustup toolchain install 1.95.0 --profile minimal --component rust-docs --target x86_64-pc-windows-msvc
+      - name: Build and verify Windows packages without signing credentials
+        if: steps.existing.outputs.found != 'true'
+        run: |
+          $output = if ('${{ needs.preflight.outputs.prerelease }}' -eq 'true') { 'dist/windows' } else { 'dist/unsigned' }
+          python packaging/windows.py --verify --commit "$env:GITHUB_SHA" --output $output
+          if ($LASTEXITCODE -ne 0) { throw 'Windows package build or verification failed.' }
+      - name: Sign stable prebuilt packages using the externally supplied certificate
+        if: steps.existing.outputs.found != 'true' && needs.preflight.outputs.prerelease != 'true'
+        env:
+          LEDALERT_SIGNING_PFX: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 }}
+          LEDALERT_SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PFX_PASSWORD }}
+          LEDALERT_PUBLISHER: ${{ vars.WINDOWS_PUBLISHER }}
+          LEDALERT_TIMESTAMP_URL: ${{ vars.WINDOWS_TIMESTAMP_URL }}
+        run: |
+          if (!$env:LEDALERT_SIGNING_PFX -or !$env:LEDALERT_SIGNING_PASSWORD -or !$env:LEDALERT_PUBLISHER -or !$env:LEDALERT_TIMESTAMP_URL) { throw 'Stable releases require WINDOWS_SIGNING_PFX_BASE64, WINDOWS_SIGNING_PFX_PASSWORD, WINDOWS_PUBLISHER and WINDOWS_TIMESTAMP_URL.' }
+          $pfx = Join-Path $env:RUNNER_TEMP 'ledalert-signing.pfx'
+          $cert = $null
+          try {
+            [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:LEDALERT_SIGNING_PFX))
+            $password = ConvertTo-SecureString -String $env:LEDALERT_SIGNING_PASSWORD -AsPlainText -Force
+            $cert = Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:\CurrentUser\My -Password $password
+            if (@($cert).Count -ne 1 -or !$cert.HasPrivateKey -or $cert.Subject -ne $env:LEDALERT_PUBLISHER) { throw 'Expected one private-key signing certificate matching WINDOWS_PUBLISHER.' }
+            Remove-Item Env:\LEDALERT_SIGNING_PFX, Env:\LEDALERT_SIGNING_PASSWORD
+            python packaging/windows.py --sign-existing dist/unsigned --publisher "$env:LEDALERT_PUBLISHER" --certificate-thumbprint "$($cert.Thumbprint)" --timestamp-url "$env:LEDALERT_TIMESTAMP_URL" --require-signed --commit "$env:GITHUB_SHA" --output dist/windows
+            if ($LASTEXITCODE -ne 0) { throw 'Windows signing or verification failed.' }
+          } finally {
+            if ($cert) { Remove-Item "Cert:\CurrentUser\My\$($cert.Thumbprint)" -ErrorAction SilentlyContinue }
+            Remove-Item $pfx -ErrorAction SilentlyContinue
+          }
+      - name: Retain exact Windows bytes for safe release recovery
+        if: steps.existing.outputs.found != 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-release-${{ github.run_id }}
+          path: dist/windows/*
+          if-no-files-found: error
+          retention-days: 90
+          overwrite: false
+
+  release:
+    needs: [preflight, windows-packages]
+    if: always() && needs.preflight.result == 'success' && needs.preflight.outputs.release == 'true' && (needs.windows-packages.result == 'success' || needs.windows-packages.result == 'skipped')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    environment: release
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Read the exact triggering source without retained credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ github.sha }}
+      - name: Recover the original complete publication bundle without rebuilding
+        if: needs.preflight.outputs.recover == 'true'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: publication-release-${{ github.run_id }}
+          path: dist/release
+      - name: Recover the exact native Windows package bytes
+        if: needs.preflight.outputs.recover != 'true'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: windows-release-${{ github.run_id }}
+          path: dist/windows
       - name: Install documentation build dependencies
-        if: steps.preflight.outputs.release == 'true'
+        if: needs.preflight.outputs.recover != 'true'
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends --yes pandoc
       - name: Require a complete production documentation build before release
-        if: steps.preflight.outputs.release == 'true'
+        if: needs.preflight.outputs.recover != 'true'
         run: python3 packaging/docs.py --container docker --output dist/docs
-      - name: Build and verify native, source and Cargo downloads in the pinned baseline
-        if: steps.preflight.outputs.release == 'true'
-        run: python3 packaging/release.py --verify --crate --commit "$GITHUB_SHA" --output dist
-      - name: Publish the versioned GitHub release without replacing existing bytes
-        if: steps.preflight.outputs.release == 'true'
+      - name: Build and verify Linux, source and Cargo downloads in the pinned baseline
+        if: needs.preflight.outputs.recover != 'true'
+        run: python3 packaging/release.py --verify --crate --commit "$GITHUB_SHA" --output dist/linux
+      - name: Assemble both platforms with one complete checksum receipt
+        if: needs.preflight.outputs.recover != 'true'
+        run: python3 packaging/publish.py assemble --commit "$GITHUB_SHA" --linux-output dist/linux --windows-output dist/windows --output dist/release
+      - name: Retain original publication bytes before any external upload
+        if: needs.preflight.outputs.recover != 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: publication-release-${{ github.run_id }}
+          path: |
+            dist/release/*
+            dist/release/.builder-image
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 90
+          overwrite: false
+      - name: Publish without replacing existing bytes
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 packaging/publish.py github --commit "$GITHUB_SHA" --output dist
+        run: python3 packaging/publish.py github --commit "$GITHUB_SHA" --output dist/release
       - name: Publish the exact verified Cargo source to crates.io
-        if: steps.preflight.outputs.release == 'true'
+        if: needs.preflight.outputs.prerelease != 'true'
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
-        run: python3 packaging/publish.py crate --commit "$GITHUB_SHA" --output dist
+        run: python3 packaging/publish.py crate --commit "$GITHUB_SHA" --output dist/release

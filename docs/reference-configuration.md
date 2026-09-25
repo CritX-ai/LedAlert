@@ -6,11 +6,11 @@ Keep your room map safe. For a device or desktop problem, start with [Troublesho
 
 ## Configuration and diagnostics
 
-Your setup lives at `$XDG_CONFIG_HOME/ledalert/config.json`, or `~/.config/ledalert/config.json` when `XDG_CONFIG_HOME` is unset. Use `--config /path/to/config.json` to choose another location.
+On Windows, your setup lives at `%APPDATA%\LedAlert\config.json`. On Linux, it lives at `$XDG_CONFIG_HOME/ledalert/config.json`, or `~/.config/ledalert/config.json` when `XDG_CONFIG_HOME` is unset. Use `--config PATH` to choose another location.
 
 - **`config.json`** stores room, routing and device settings—not runtime lighting permission or notification history.
 - **`config.json.ui.json`** stores guide progress, completed setup/strip placement, the last successfully connected saved target, and tooltip/demo visibility. It stores no lighting permission, guidance session, demo state or undo history. For a custom path, append `.ui.json` to the filename.
-- **Saving** uses a same-directory temporary file with mode 0600, file synchronization, atomic replacement and directory synchronization. Invalid settings cannot overwrite the saved file. A directory-sync error after replacement means persistence could not be confirmed.
+- **Saving** uses a same-directory temporary file, file synchronization and atomic replacement. Unix adds mode 0600 and directory synchronization; Windows inherits the destination directory's ACL and closes the temporary handle before replacement. Invalid settings cannot overwrite the saved file. A Unix directory-sync error after replacement means persistence could not be confirmed.
 
 From an extracted binary bundle:
 
@@ -22,6 +22,8 @@ From an extracted binary bundle:
 
 `check-config` validates the file with **no desktop or network access**. `probe` is read-only but contacts the configured device; it sends no lighting output. For a source build, use `./target/release/ledalert`, adjusted for `CARGO_TARGET_DIR` if set. If installed on PATH, use `ledalert`.
 
+In the Windows portable bundle use `.\ledalert.exe`; source builds use `.\target\release\ledalert.exe`. Configuration paths may contain Unicode characters. Windows stores notification-listener permission separately from these files; it is not permission to enable physical lighting.
+
 ### Validation limits
 
 | Setting | Limit |
@@ -30,6 +32,7 @@ From an extracted binary bundle:
 | Displays | 16 |
 | Strip vertices | 2–64 |
 | Rules | 128 |
+| Application routing ID | 512 UTF-8 bytes; native Windows AUMIDs also obey the 128 UTF-16-unit limit |
 | Configuration file | 256 KiB |
 | Room width, depth and height | 0.5–50 m |
 | Custom outline | 3–12 normalized counterclockwise corners; absent or empty means rectangle |
