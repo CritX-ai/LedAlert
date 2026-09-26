@@ -6,7 +6,7 @@ Keep your room map safe. For a device or desktop problem, start with [Troublesho
 
 ## Configuration and diagnostics
 
-On Windows, your setup lives at `%APPDATA%\LedAlert\config.json`. On Linux, it lives at `$XDG_CONFIG_HOME/ledalert/config.json`, or `~/.config/ledalert/config.json` when `XDG_CONFIG_HOME` is unset. Use `--config PATH` to choose another location.
+On macOS, your setup lives at `~/Library/Application Support/LedAlert/config.json`. On Windows it lives at `%APPDATA%\LedAlert\config.json`; on Linux, `$XDG_CONFIG_HOME/ledalert/config.json`, or `~/.config/ledalert/config.json` when `XDG_CONFIG_HOME` is unset. Use `--config PATH` to choose another location. Earlier macOS development setups under an XDG directory are not moved automatically; keep a backup and select that path explicitly if needed.
 
 - **`config.json`** stores room, routing and device settings—not runtime lighting permission or notification history.
 - **`config.json.ui.json`** stores guide progress, completed setup/strip placement, the last successfully connected saved target, and tooltip/demo visibility. It stores no lighting permission, guidance session, demo state or undo history. For a custom path, append `.ui.json` to the filename.

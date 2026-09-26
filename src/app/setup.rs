@@ -56,10 +56,10 @@ impl AppState {
         ui.horizontal(|ui| {
             self.identity.wordmark(ui, self.config.reduced_motion);
             ui.add_space(8.0);
-            if ui.add_enabled(self.history.can_undo(), Action::new(Icon::Undo, "Undo · Ctrl+Z")).clicked() {
+            if ui.add_enabled(self.history.can_undo(), Action::new(Icon::Undo, if cfg!(target_os = "macos") { "Undo · Cmd+Z" } else { "Undo · Ctrl+Z" })).clicked() {
                 self.undo();
             }
-            if ui.add_enabled(self.history.can_redo(), Action::new(Icon::Redo, "Redo · Ctrl+Shift+Z")).clicked() {
+            if ui.add_enabled(self.history.can_redo(), Action::new(Icon::Redo, if cfg!(target_os = "macos") { "Redo · Cmd+Shift+Z" } else { "Redo · Ctrl+Shift+Z" })).clicked() {
                 self.redo();
             }
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -94,7 +94,7 @@ impl AppState {
                     self.engine.dismiss_persistent(None);
                 }
                 if ui.add_enabled(self.valid().is_ok() && self.saved.as_ref() != Some(&self.config),
-                    Action::new(Icon::Save, "Save setup · Ctrl+S")).clicked() {
+                    Action::new(Icon::Save, if cfg!(target_os = "macos") { "Save setup · Cmd+S" } else { "Save setup · Ctrl+S" })).clicked() {
                     self.save_config();
                 }
                 let random = self.demo_mode == DemoMode::Random;

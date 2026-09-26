@@ -1024,7 +1024,8 @@ impl AppState {
             }
             ui.checkbox(&mut self.config.reduced_motion,"Reduced motion");
             ui.checkbox(&mut self.config.notifications_enabled,"Desktop notifications");
-            ui.checkbox(&mut self.config.media_enabled,"Media playback");
+            ui.checkbox(&mut self.config.media_enabled, if cfg!(target_os = "macos") { "App audio activity" } else { "Media playback" })
+                .on_hover_text(if cfg!(target_os = "macos") { "Use CoreAudio output activity. Includes calls and apps holding a silent output stream; no audio is recorded." } else { "Activate media rules for participating players." });
             ui.add_space(12.0);
             preferences_changed |= ui.checkbox(&mut self.preferences.hide_tooltips, "Hide tooltips").changed();
             preferences_changed |= ui.checkbox(&mut self.preferences.hide_demos, "Hide demo content").changed();
@@ -1035,6 +1036,16 @@ impl AppState {
                 #[cfg(windows)]
                 if ui.button("Allow Windows notifications").on_hover_text("Ask Windows for access to notification app identities. Requires the installed MSIX package; lighting stays disabled until you enable it separately.").clicked() {
                     self.notification_permission_requested = true;
+                }
+                #[cfg(target_os = "macos")]
+                {
+                    ui.add(egui::Label::new("Notification app identities require Full Disk Access. This is a broad macOS permission; LedAlert reads only notification IDs, app IDs and timestamps, never notification contents.").wrap());
+                    if ui.button("Open Full Disk Access settings").clicked() {
+                        match crate::desktop::open_notification_settings() {
+                            Ok(()) => self.notify("Add LedAlert to Full Disk Access only if you want notification integration. macOS may require you to quit and reopen it."),
+                            Err(error) => self.notify(error.to_string()),
+                        }
+                    }
                 }
                 if let Err(error) = self.valid() { ui.colored_label(ERROR, error); }
                 if let Some(error) = self.output.snapshot().error { ui.colored_label(ERROR, error); }
@@ -1226,7 +1237,11 @@ impl AppState {
                 self.undo();
             }
             if self.sidebar_visible
-                && ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Delete))
+                && ctx.input_mut(|i| {
+                    i.consume_key(egui::Modifiers::NONE, egui::Key::Delete)
+                        || (cfg!(target_os = "macos")
+                            && i.consume_key(egui::Modifiers::NONE, egui::Key::Backspace))
+                })
             {
                 self.remove_selection();
             }

@@ -1,4 +1,4 @@
-name: Linux, Windows and crates.io release
+name: Linux, Windows, macOS and crates.io release
 
 on:
   push:
@@ -102,9 +102,46 @@ jobs:
           retention-days: 90
           overwrite: false
 
+  macos-packages:
+    needs: preflight
+    if: needs.preflight.outputs.release == 'true' && needs.preflight.outputs.recover != 'true'
+    runs-on: xcode-27
+    timeout-minutes: 90
+    environment: release
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Read the exact triggering source without retained credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          ref: ${{ github.sha }}
+      - name: Reuse original macOS bytes when recovering this run
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 packaging/publish.py macos-recovery --commit "$GITHUB_SHA"
+      - name: Install pinned Rust and runtime notice inputs
+        if: steps.existing.outputs.found != 'true'
+        run: rustup toolchain install 1.95.0 --profile minimal --component rust-docs --target aarch64-apple-darwin
+      - name: Build and verify the ad-hoc macOS package on native Apple Silicon
+        if: steps.existing.outputs.found != 'true'
+        run: python3 packaging/macos.py --verify --commit "$GITHUB_SHA" --output dist/macos
+      - name: Retain exact macOS bytes for safe release recovery
+        if: steps.existing.outputs.found != 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: macos-release-${{ github.run_id }}
+          path: dist/macos/*
+          if-no-files-found: error
+          retention-days: 90
+          overwrite: false
+
   release:
-    needs: [preflight, windows-packages]
-    if: always() && needs.preflight.result == 'success' && needs.preflight.outputs.release == 'true' && (needs.windows-packages.result == 'success' || needs.windows-packages.result == 'skipped')
+    needs: [preflight, windows-packages, macos-packages]
+    if: always() && needs.preflight.result == 'success' && needs.preflight.outputs.release == 'true' && (needs.windows-packages.result == 'success' || needs.windows-packages.result == 'skipped') && (needs.macos-packages.result == 'success' || needs.macos-packages.result == 'skipped')
     runs-on: ubuntu-24.04
     timeout-minutes: 150
     environment: release
@@ -130,6 +167,12 @@ jobs:
         with:
           name: windows-release-${{ github.run_id }}
           path: dist/windows
+      - name: Recover the exact native macOS package bytes
+        if: needs.preflight.outputs.recover != 'true'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: macos-release-${{ github.run_id }}
+          path: dist/macos
       - name: Install documentation build dependencies
         if: needs.preflight.outputs.recover != 'true'
         run: |
@@ -141,9 +184,9 @@ jobs:
       - name: Build and verify Linux, source and Cargo downloads in the pinned baseline
         if: needs.preflight.outputs.recover != 'true'
         run: python3 packaging/release.py --verify --crate --commit "$GITHUB_SHA" --output dist/linux
-      - name: Assemble both platforms with one complete checksum receipt
+      - name: Assemble all platforms with one complete checksum receipt
         if: needs.preflight.outputs.recover != 'true'
-        run: python3 packaging/publish.py assemble --commit "$GITHUB_SHA" --linux-output dist/linux --windows-output dist/windows --output dist/release
+        run: python3 packaging/publish.py assemble --commit "$GITHUB_SHA" --linux-output dist/linux --windows-output dist/windows --macos-output dist/macos --output dist/release
       - name: Retain original publication bytes before any external upload
         if: needs.preflight.outputs.recover != 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

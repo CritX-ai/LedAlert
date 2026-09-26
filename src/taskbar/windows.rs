@@ -159,8 +159,10 @@ fn parse_pidl(pidl: &[u8]) -> Result<Option<String>> {
                 "Unterminated Taskband application identity"
             );
             let units = encoded[..encoded.len() - 2]
-                .chunks_exact(2)
-                .map(|word| u16::from_le_bytes([word[0], word[1]]))
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .map(|word| u16::from_le_bytes(*word))
                 .collect::<Vec<_>>();
             let id = String::from_utf16(&units).context("Invalid UTF-16 taskbar identity")?;
             ensure!(

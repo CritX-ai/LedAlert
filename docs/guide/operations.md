@@ -64,7 +64,7 @@ Undo/redo never grants permission or restores quiet/lock state or notification r
 
 ## Find and back up your setup
 
-The default configuration is `%APPDATA%\LedAlert\config.json` on Windows. On Linux it is `$XDG_CONFIG_HOME/ledalert/config.json`, or `~/.config/ledalert/config.json` when `XDG_CONFIG_HOME` is unset. The preferences sibling is `config.json.ui.json`. A custom `--config PATH` uses that file and its `.ui.json` sibling.
+The default configuration is `~/Library/Application Support/LedAlert/config.json` on macOS and `%APPDATA%\LedAlert\config.json` on Windows. On Linux it is `$XDG_CONFIG_HOME/ledalert/config.json`, or `~/.config/ledalert/config.json` when `XDG_CONFIG_HOME` is unset. The preferences sibling is `config.json.ui.json`. A custom `--config PATH` uses that file and its `.ui.json` sibling.
 
 The configuration stores room, routing and device settings. Preferences store guide/completed-view state, strip placement, the last successfully connected saved target and tooltip/demo visibility. Neither stores lighting permission, guidance consent or notification records.
 

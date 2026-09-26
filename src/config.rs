@@ -543,7 +543,16 @@ pub fn default_path() -> Result<PathBuf> {
     Ok(base.join("LedAlert").join("config.json"))
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "macos")]
+pub fn default_path() -> Result<PathBuf> {
+    let home = std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .filter(|path| path.is_absolute())
+        .context("Set an absolute HOME, or supply --config PATH")?;
+    Ok(home.join("Library/Application Support/LedAlert/config.json"))
+}
+
+#[cfg(not(any(windows, target_os = "macos")))]
 pub fn default_path() -> Result<PathBuf> {
     if let Some(value) = std::env::var_os("XDG_CONFIG_HOME") {
         let base = PathBuf::from(value);

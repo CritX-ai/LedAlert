@@ -211,7 +211,13 @@ impl AppState {
                     if ui.add(Action::new(Icon::Bell, "Activate from desktop notifications").label("Notifications").selected(rule.options.notifications)).clicked() {
                         rule.options.notifications = !rule.options.notifications;
                     }
-                    if ui.add(Action::new(Icon::Media, "Activate while this app is playing media").label("Media").selected(rule.options.media)).clicked() {
+                    let media_hint = if cfg!(target_os = "macos") {
+                        "Activate while this app has an active audio output stream. May include calls or silence; no audio is recorded."
+                    } else {
+                        "Activate while this app is playing media"
+                    };
+                    let media_label = if cfg!(target_os = "macos") { "Audio" } else { "Media" };
+                    if ui.add(Action::new(Icon::Media, media_hint).label(media_label).selected(rule.options.media)).clicked() {
                         rule.options.media = !rule.options.media;
                     }
                 });

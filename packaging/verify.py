@@ -47,7 +47,8 @@ def safe_name(name: str) -> bool:
     )
 
 
-def read_archive(path: Path, prefix: str) -> dict[str, tuple[bytes, int]]:
+def read_archive(path: Path, prefix: str, *,
+                 executables: tuple[str, ...] = ("bin/ledalert",)) -> dict[str, tuple[bytes, int]]:
     """Read regular allowlisted members only; never invoke tar extraction."""
     require(path.is_file() and not path.is_symlink(), f"Missing or unsafe archive: {path.name}")
     require(path.stat().st_size <= MAX_ARCHIVE_BYTES, f"Archive too large: {path.name}")
@@ -64,7 +65,7 @@ def read_archive(path: Path, prefix: str) -> dict[str, tuple[bytes, int]]:
             require(0 <= member.size <= MAX_MEMBER_BYTES, f"Oversized archive member: {name}")
             total += member.size
             require(total <= MAX_ARCHIVE_BYTES, "Expanded archive size limit exceeded")
-            mode = 0o755 if name == "bin/ledalert" else 0o644
+            mode = 0o755 if name in executables else 0o644
             require(member.mode == mode, f"Unexpected archive permissions: {name}")
             require(member.uid == member.gid == 0 and not member.uname and not member.gname,
                     f"Unexpected archive ownership: {name}")
@@ -81,6 +82,35 @@ def read_json(data: bytes, label: str) -> dict:
     value = json.loads(data)
     require(isinstance(value, dict), f"Expected JSON object: {label}")
     return value
+
+
+def inspect_target_notices(root: Path, files: dict[str, bytes], target: str) -> set[str]:
+    """Validate the locked dependency and runtime notice inventory of a native bundle."""
+    inventory = read_json(files["licenses/INVENTORY.json"], "Native notice inventory")
+    require(inventory.get("target") == target and bool(inventory.get("packages")),
+            "Native dependency notice target mismatch")
+    locked = {(p["name"], p["version"]): p for p in tomllib.loads((root / "Cargo.lock").read_text())["package"]}
+    referenced = {"licenses/INVENTORY.json", "licenses/Silkscreen-OFL.txt",
+                  "licenses/Silkscreen-metadata.txt", "licenses/Saira-OFL.txt"}
+    seen = set()
+    for package in inventory["packages"]:
+        key = (package["name"], package["version"])
+        require(key not in seen and key in locked and
+                package.get("crate_sha256") == locked[key].get("checksum") and
+                package.get("registry_source") == locked[key].get("source") and
+                bool(package.get("license_expression")) and bool(package.get("notices")),
+                "Invalid native dependency notice provenance")
+        seen.add(key)
+    notices = [notice for package in inventory["packages"] for notice in package["notices"]]
+    runtime = inventory.get("rust_runtime", {})
+    require(bool(runtime.get("notices")), "Missing native Rust runtime notices")
+    for notice in notices + runtime["notices"]:
+        name = notice["path"]
+        require(name.startswith("licenses/") and name in files and bool(files[name].strip()) and
+                release.digest(files[name]) == notice.get("sha256"), f"Missing or changed notice: {name}")
+        referenced.add(name)
+    require(referenced.issubset(files), "Missing bundled font or dependency notices")
+    return referenced
 
 
 def first_party_license(root: Path) -> dict:
@@ -128,12 +158,13 @@ def inspect_crate(root: Path, path: Path) -> None:
     package = tomllib.loads((root / "Cargo.toml").read_text())["package"]
     entries = read_archive(path, f"ledalert-{package['version']}")
     licenses = set(first_party_license(root).get("files", []))
-    fixed = {"Cargo.toml", "Cargo.lock", "README.md", "assets/ledalert.png",
+    fixed = {"Cargo.toml", "Cargo.lock", "build.rs", "README.md", "assets/ledalert.png",
              "assets/fonts/Silkscreen-Bold.ttf", "assets/fonts/OFL.txt"} | licenses
     expected = {
         name: source for name, source in release.source_files(root).items()
         if name in fixed or
         (name.startswith(("src/", "tests/", "examples/")) and name.endswith(".rs")) or
+        (name.startswith("src/") and name.endswith(".m")) or
         (Path(name).parent.as_posix() == "tests/fixtures" and name.endswith(".hex")) or
         name.startswith("packaging/licenses/")
     }

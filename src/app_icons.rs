@@ -560,7 +560,7 @@ fn shrink(width: u32, height: u32, mut rgba: Vec<u8>) -> Option<(u32, u32, Vec<u
     if width.max(height) <= ICON_SIZE {
         return Some((width, height, rgba));
     }
-    for pixel in rgba.chunks_exact_mut(4) {
+    for pixel in rgba.as_chunks_mut::<4>().0 {
         let alpha = u16::from(pixel[3]);
         for value in &mut pixel[..3] {
             *value = ((u16::from(*value) * alpha + 127) / 255) as u8;
@@ -587,8 +587,8 @@ fn shrink(width: u32, height: u32, mut rgba: Vec<u8>) -> Option<(u32, u32, Vec<u
     Some((width, height, rgba))
 }
 
-fn unpremultiply(rgba: &mut [u8]) {
-    for pixel in rgba.chunks_exact_mut(4) {
+pub(crate) fn unpremultiply(rgba: &mut [u8]) {
+    for pixel in rgba.as_chunks_mut::<4>().0 {
         let alpha = u32::from(pixel[3]);
         for value in &mut pixel[..3] {
             *value = (u32::from(*value) * 255 + alpha / 2)
@@ -602,10 +602,10 @@ fn unpremultiply(rgba: &mut [u8]) {
 /// Alpha-weighted hue clusters avoid averaging a multicolored logo into gray.
 /// Prefer visible chromatic artwork even against a large neutral background;
 /// neutral-only artwork retains its most prevalent source shade.
-fn dominant_color(rgba: &[u8]) -> Option<[u8; 3]> {
+pub(crate) fn dominant_color(rgba: &[u8]) -> Option<[u8; 3]> {
     let mut clusters = [[0_u64; 4]; 24];
     let mut neutrals = [[0_u64; 4]; 16];
-    for pixel in rgba.chunks_exact(4) {
+    for pixel in rgba.as_chunks::<4>().0 {
         let alpha = u64::from(pixel[3]);
         if alpha < 16 {
             continue;

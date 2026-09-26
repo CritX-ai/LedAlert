@@ -9,10 +9,20 @@ use tokio::sync::oneshot;
 
 #[cfg(target_os = "linux")]
 mod linux;
+#[cfg(target_os = "macos")]
+mod macos;
+#[cfg(any(target_os = "macos", test))]
+mod macos_state;
 #[cfg(windows)]
 mod windows;
 #[cfg(any(windows, test))]
 mod windows_state;
+
+/// Opens the permission pane only; permission remains an explicit user decision.
+#[cfg(target_os = "macos")]
+pub fn open_notification_settings() -> anyhow::Result<()> {
+    macos::open_notification_settings()
+}
 
 const LOCK_FRESHNESS: Duration = Duration::from_secs(1);
 const MEDIA_FRESHNESS: Duration = Duration::from_secs(3);
@@ -200,7 +210,9 @@ async fn run(shared: &Shared, notifications: &mpsc::SyncSender<NotificationEvent
     linux::run(shared, notifications).await;
     #[cfg(windows)]
     windows::run(shared, notifications).await;
-    #[cfg(not(any(target_os = "linux", windows)))]
+    #[cfg(target_os = "macos")]
+    macos::run(shared, notifications).await;
+    #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
     {
         let _ = notifications;
         notification_status(shared, "Desktop notifications unsupported on this platform");

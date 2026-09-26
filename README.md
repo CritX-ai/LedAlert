@@ -1,8 +1,8 @@
 # <img src="assets/ledalert.png" alt="" width="88" align="right"> LedAlert
 
-**Your notifications, in the room.** LedAlert is a native Windows 11 and Linux workbench for routing desktop notifications and media playback to spots of light on a WLED RGB strip. Draw the room, place your displays, map the strip — then watch each application claim its place.
+**Your notifications, in the room.** LedAlert is a native macOS, Windows 11 and Linux workbench for routing desktop notifications and application media activity to spots of light on a WLED RGB strip. Draw the room, place your displays, map the strip — then watch each application claim its place.
 
-[![GitHub prerelease](https://img.shields.io/github/v/release/CritX-ai/LedAlert?include_prereleases&label=GitHub%20prerelease&style=flat-square)](https://github.com/CritX-ai/LedAlert/releases/tag/v0.3.0-alpha) [![crates.io stable release](https://img.shields.io/crates/v/ledalert?label=crates.io%20stable&style=flat-square)](https://crates.io/crates/ledalert) [![Verification workflow](https://github.com/CritX-ai/LedAlert/actions/workflows/verify.yml/badge.svg?branch=main&label=verify)](https://github.com/CritX-ai/LedAlert/actions/workflows/verify.yml) [![License](https://img.shields.io/crates/l/ledalert?style=flat-square)](https://alert.critx.ai/#license-status)
+[![GitHub releases](https://img.shields.io/github/v/release/CritX-ai/LedAlert?include_prereleases&label=GitHub&style=flat-square)](https://github.com/CritX-ai/LedAlert/releases) [![crates.io stable release](https://img.shields.io/crates/v/ledalert?label=crates.io%20stable&style=flat-square)](https://crates.io/crates/ledalert) [![Verification workflow](https://github.com/CritX-ai/LedAlert/actions/workflows/verify.yml/badge.svg?branch=main&label=verify)](https://github.com/CritX-ai/LedAlert/actions/workflows/verify.yml) [![License](https://img.shields.io/crates/l/ledalert?style=flat-square)](https://alert.critx.ai/#license-status)
 
 ---
 
@@ -12,9 +12,13 @@
 
 ## Install
 
-**Try 0.3.0-alpha:** this [GitHub prerelease](https://github.com/CritX-ai/LedAlert/releases/tag/v0.3.0-alpha) adds Windows 11 support alongside Linux. It is not the stable/latest release and is **not published to crates.io**.
+**[0.3.0-beta](https://github.com/CritX-ai/LedAlert/releases/tag/v0.3.0-beta)** is a **GitHub-only development prerelease**, adding native **macOS 27 on Apple Silicon** and **Sidebar.app 2.2.6** compatibility alongside Windows and Linux. It is not the latest stable release and is not published to crates.io.
 
-**Windows 11:** download the [portable ZIP](https://github.com/CritX-ai/LedAlert/releases/download/v0.3.0-alpha/ledalert-0.3.0-alpha-windows-x86_64.zip) and [checksums](https://github.com/CritX-ai/LedAlert/releases/download/v0.3.0-alpha/SHA256SUMS). The accompanying [MSIX](https://github.com/CritX-ai/LedAlert/releases/download/v0.3.0-alpha/ledalert-0.3.0-alpha-windows-x86_64.msix) is **unsigned, for development only**; there is no production signed installer yet. The [Windows installation steps](docs/guide/install.md#windows-11) explain checksum verification and explicit Developer Mode registration of the ZIP's manifest for notification access. Do not bypass signature checks or add certificate trust. Unregistered portable installs support the editor, taskbar, displays, media and lock detection, but cannot observe Windows notifications.
+**macOS:** [verify and install the application bundle](docs/guide/install.md#macos). It is ad-hoc signed, **not Developer ID signed or notarized**. Native displays, Sidebar/Dock pins and icons, app audio activity and lock monitoring need no notification permission. Notification identities require separately granted, broad Full Disk Access; no notification text is read.
+
+**Windows 11:** [verify the portable ZIP](docs/guide/install.md#windows-11), then use explicit development registration if you want notification access. The beta MSIX is **unsigned and development-only**, not a trusted installer. Stable publication still requires a trusted Windows signature; do not bypass signature checks or add certificate trust.
+
+**Linux:** [verify, extract and run the x86_64 archive](docs/guide/install.md#verify-extract-and-run-on-linux). The tested desktop is KDE Plasma on Wayland; glibc 2.36 or newer is required.
 
 **Stable Cargo release:** with [Rust](https://rustup.rs/) and the [native dependencies](docs/guide/install.md#native-dependencies) installed:
 
@@ -22,18 +26,18 @@
 cargo install ledalert --locked
 ```
 
-This unversioned command selects the stable published crate, **not 0.3.0-alpha**. [cargo-binstall](https://github.com/cargo-bins/cargo-binstall#installation) likewise uses the published crate's binary metadata and available targets:
+This unversioned command selects the stable **published** crate, not automatically the version in this checkout. [cargo-binstall](https://github.com/cargo-bins/cargo-binstall#installation) likewise uses that published crate's binary metadata and available targets:
 
 ```sh
 cargo binstall ledalert --strategies crate-meta-data
 ```
 
-For the alpha on Linux, [download its archive](https://github.com/CritX-ai/LedAlert/releases/download/v0.3.0-alpha/ledalert-0.3.0-alpha-linux-x86_64.tar.gz) and the same release's checksums, then [verify and extract](docs/guide/install.md#download-a-release-bundle). To compile the alpha, [build from the `v0.3.0-alpha` source](docs/guide/install.md#build-from-source).
+For this beta, use the [versioned GitHub downloads](https://github.com/CritX-ai/LedAlert/releases/tag/v0.3.0-beta) and checksums from the same release, or [build the tagged source](docs/guide/install.md#build-from-source). Installation trust, notification access and physical-lighting permission are separate decisions.
 
 ## Quickstart
 
 1. [Draw the room](docs/guide/room.md). Start with a rectangle; **Room shape…** handles L-shapes later.
-2. [Place your displays](docs/guide/displays.md). Import Windows or KDE geometry, or arrange them by hand.
+2. [Place your displays](docs/guide/displays.md). Import macOS, Windows or KDE geometry, or arrange them by hand.
 3. [Map the strip](docs/guide/strip.md). Trace the route and LED order, then set the WLED address.
 4. [Add rules](docs/guide/rules.md). Try examples and on-screen demos first — no hardware needed.
 5. **Finish** saves the setup. [Enable lighting](docs/guide/operations.md#choose-whether-to-enable-real-lighting) whenever you're ready.
@@ -44,19 +48,19 @@ Your desktop and your lights decide whether LedAlert fits. The short version:
 
 | Your desktop | Status |
 | :--- | :--- |
-| <span class="platform-mark"><img src="docs/site/assets/icons/windows.svg" alt="" width="20" height="20"></span> **Windows 11 x64** | Alpha |
+| <span class="platform-mark"><img src="docs/site/assets/icons/windows.svg" alt="" width="20" height="20"></span> **Windows 11 x64** | Native; interactive verification limits |
 | <span class="platform-mark"><img src="docs/site/assets/icons/kde.svg" alt="" width="20" height="20"></span> **KDE Plasma / Wayland** | Supported |
 | <span class="platform-mark"><img src="docs/site/assets/icons/kde.svg" alt="" width="20" height="20"></span> KDE Plasma / X11 | Unverified |
 | <span class="platform-mark"><img src="docs/site/assets/icons/gnome.svg" alt="" width="20" height="20"></span> GNOME | Unverified |
 | <span class="platform-mark"><img src="docs/site/assets/icons/xfce.svg" alt="" width="20" height="20"></span> Xfce | Unverified |
 | <span class="platform-mark"><img src="docs/site/assets/icons/cinnamon.svg" alt="" width="20" height="20"></span> Cinnamon | Unverified |
 | <span class="platform-mark"><img src="docs/site/assets/icons/linux.svg" alt="" width="20" height="20"></span> Other Linux desktops | Unverified |
-| <span class="platform-mark"><img src="docs/site/assets/icons/apple.svg" alt="" width="20" height="20"></span> macOS | Unsupported |
+| <span class="platform-mark"><img src="docs/site/assets/icons/apple.svg" alt="" width="20" height="20"></span> **macOS 27 / Apple Silicon** | Native; permission-gated |
 
 - **Windows 11:** native display discovery, actual taskbar pins, media and lock detection. Notifications require registered package identity and allowed notification-listener access. See [Windows verification and remaining manual checks](docs/windows-verification.md).
 - **KDE Plasma on Wayland:** Linux x86_64 display discovery, pinned-app suggestions, notifications, lock detection and media markers.
 - **Other Linux sessions:** KDE on X11 runs as a normal X11 client, but full integration is unverified. GNOME uses standard notification/lock services and manual display placement. Xfce and Cinnamon remain unverified; MATE, Budgie, LXQt and other desktops use the same standard services without verified integration.
-- **macOS:** no desktop backend is available in this alpha. The planned beta adds macOS support and verification; final 0.3.0 follows cross-platform polishing. These are plans, not current capabilities.
+- **macOS:** native display import, actual Sidebar pins while Sidebar is running (Dock pins otherwise), bundle identities and icons, CoreAudio output-activity markers and fail-closed lock monitoring. Notification metadata uses a read-only, permission-gated private schema. Other macOS/Sidebar versions are unverified; see [macOS verification and limits](docs/support.md#macos-verification).
 
 | Your lights | Status |
 | :--- | :--- |

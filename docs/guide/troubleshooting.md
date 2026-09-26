@@ -9,6 +9,7 @@ Read the error and compare the bundle's `BUILD-INFO.json` with your system:
 - The Linux x86_64 bundle needs **glibc 2.36 or newer**.
 - Wayland/X11, xkbcommon and EGL/OpenGL runtime libraries may be needed too.
 - Windows needs Windows 11 x64 and a working OpenGL driver. **0.3.0-alpha has no production signed installer**; its MSIX is unsigned and development-only. Use the portable ZIP; unregistered execution has no notification access. For notification testing use [explicit Developer Mode registration](install.md#windows-11), never a signature bypass or certificate trust change.
+- macOS packages target Apple Silicon; desktop integration is exercised on macOS 27. The `.app` is ad-hoc signed, not notarized. Gatekeeper can block downloaded apps; do not strip quarantine or disable protection. A binary's 14.2 deployment floor does not establish support on older systems.
 - The GUI needs a graphical session (and session D-Bus on Linux); `check-config` can run headlessly.
 
 If the bundle does not fit, [build from source](install.md#build-from-source). A launch on another desktop does not establish notification or lock support; see [Compatibility](../support.md).
@@ -54,18 +55,18 @@ Cannot add a bend? Check the **64-point** limit, **1 cm** spacing and available 
 
 Check in order:
 
-1. **Integration status:** observation must be available. On Windows launch LedAlert from Start with installed or explicitly registered package identity and use **Allow Windows notifications**; denied/revoked access needs Windows Settings. On Linux LedAlert does not replace the daemon or change a denied session-bus policy.
+1. **Integration status:** observation must be available. On macOS the recognized private notification store requires Full Disk Access; the Settings button only opens Apple's permission page. Grant access only if you accept that broad permission, then relaunch. On Windows launch LedAlert from Start with installed or explicitly registered package identity and use **Allow Windows notifications**; denied/revoked access needs Windows Settings. On Linux LedAlert does not replace the daemon or change a denied session-bus policy.
 2. **Desktop notifications:** enable it in Settings.
-3. **Rules:** enable the app's rule and its **Notifications** trigger; check minimum **Urgency**. Windows notifications use normal urgency, not critical.
+3. **Rules:** enable the app's rule and its **Notifications** trigger; check minimum **Urgency**. Windows and macOS notifications use normal urgency, not critical.
 4. **Application identity:** choose the observed source in **Add app**. Matching is exact, ignoring ASCII case; launcher names can differ.
 5. **Fallback:** a disabled or filtered explicit rule suppresses **All other apps** for that app.
 6. **Source:** the app must emit a supported desktop notification, not an in-app-only message.
 
-Taskbar suggestions and demos are on-screen previews, not desktop integration checks. Persistent tracking requires a matching Linux daemon reply or an observed Windows notification-center lifecycle; lost observation clears tracked lights. Windows history is baselined rather than replayed after startup, permission changes or reconnection.
+Taskbar suggestions and demos are on-screen previews, not desktop integration checks. Persistent tracking requires a matching Linux daemon reply or observed Windows/macOS notification-center membership; lost observation clears tracked lights. Windows and macOS history is baselined rather than replayed after startup, permission changes or reconnection. A macOS schema error is not fixed by granting more permissions; it requires an adapter update for that OS version.
 
 ## No media marker appears
 
-Check **Settings → Media playback**, the rule's **Media** trigger and the player's Windows system-media or Linux MPRIS participation. Notification support does not imply playback support. LedAlert reads playback state and identity—not audio or track metadata.
+Check **Settings → Media playback** (Windows/Linux) or **App audio activity** (macOS), plus the rule's **Media** trigger. Windows requires system-media participation; Linux requires MPRIS. macOS observes CoreAudio output activity, so calls or silent streams can keep a marker active even when a player looks paused. Notification support does not imply playback support. No audio or track metadata is captured.
 
 ## A persistent light outlives its popup
 
@@ -79,9 +80,9 @@ Read the current state before restarting. Events received while inhibited are di
 
 ## Displays or application artwork are missing
 
-Use **Displays → Add manually** when discovery is unavailable. Windows queries active monitor topology; KDE needs `kscreen-doctor` from `libkscreen`. **Refresh** rescans; **Use desktop layout** deliberately rearranges displays.
+Use **Displays → Add manually** when discovery is unavailable. macOS queries native active displays and Windows queries active monitor topology; KDE needs `kscreen-doctor` from `libkscreen`. **Refresh** rescans; **Use desktop layout** deliberately rearranges displays.
 
-Use **Add app** for an exact or observed ID. Missing launchers/icons can leave text-only tiles; you do not need to replace the room. An unsupported Windows Taskband format is reported explicitly; LedAlert does not invent taskbar suggestions from the Start menu.
+Use **Add app** for an exact or observed ID. Missing launchers/icons can leave text-only tiles; you do not need to replace the room. Unsupported Windows Taskband or active Sidebar formats are reported explicitly. LedAlert does not invent Windows pins from Start, substitute Dock pins for an unreadable active Sidebar, or run an application to resolve its icon.
 
 ## A setup will not load or save
 
@@ -91,7 +92,7 @@ Use **Add app** for an exact or observed ID. Missing launchers/icons can leave t
 ./bin/ledalert --config /path/to/config.json check-config
 ```
 
-For a source build, use `./target/release/ledalert`, adjusted for `CARGO_TARGET_DIR`. This checks the file without desktop or network access. Read validation errors rather than changing a version field to bypass them.
+For a source build, use `./target/release/ledalert`, adjusted for `CARGO_TARGET_DIR`; for a macOS bundle use `./LedAlert.app/Contents/MacOS/ledalert`. This checks the file without desktop or network access. Read validation errors rather than changing a version field to bypass them.
 
 **Begin new setup followed by saving replaces an unreadable setup.** Opening it alone leaves it untouched. For save failures, check destination access. Invalid settings are not saved; a directory-sync error means persistence could not be confirmed. Remove crash-left `.tmp` files only after keeping a backup and confirming no instance is saving. See [backup and recovery](../reference-configuration.md#back-up-and-recover).
 

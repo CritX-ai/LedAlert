@@ -10,7 +10,7 @@ Open **Rules**. You have two starting paths:
 
 ### Try taskbar suggestions
 
-**Examples** reads the actual pinned launchers from Windows 11's taskbar or KDE Plasma. Windows includes packaged apps and Win32 pins, not a substitute list from Start. Communication and productivity apps are initially selected; you can include other pins.
+**Examples** reads actual pins from Sidebar (while running) or the Dock on macOS, Windows 11's taskbar, or KDE Plasma. Windows includes packaged apps and Win32 pins, not a substitute list from Start. Sidebar pins resolve through their installed application bundles; hidden or unresolved entries are omitted, and unsupported private formats report an error. Communication and productivity apps are initially selected; you can include other pins.
 
 1. Choose the applications you want to try and a display for their initial destination.
 2. Select **Try examples** to cycle through them locally. The status bar names the current app. This does not add rules, launch applications or send pixels.
@@ -22,7 +22,7 @@ Examples last three seconds, without media or critical emphasis. New rules take 
 
 Select **Add app**, then choose a recently observed source or enter its exact **Application ID** and press **Enter** or the create-rule **+** control. Let the application emit a normal desktop notification if you need its observed identity to appear.
 
-Launcher names can differ from notification identities. Matching is exact, ignoring ASCII case. Linux uses the canonical `desktop-entry` prefix before the app name; Windows retains the source AppUserModelID, including legitimate dots, case and path components. Choose an observed ID rather than guessing or stripping a suffix.
+Launcher names can differ from notification identities. Matching is exact, ignoring ASCII case. macOS uses the bundle identifier; Linux uses the canonical `desktop-entry` prefix before the app name; Windows retains the source AppUserModelID, including legitimate dots, case and path components. Choose an observed ID rather than guessing or stripping a suffix.
 
 **All other apps** is the `*` fallback. With no rules, **Use a simple default** creates it. An explicit rule that is disabled or rejects a trigger **suppresses fallback for that application**; fallback is not a second chance after a filtered rule.
 
@@ -55,7 +55,7 @@ Scene **Dismiss** clears the selected rule's persistent lights; the toolbar dism
 - **Glow** gives a centered indication; **Ripple** adds one outward band. Effects do not repeat or strobe. A persistent ripple enters once over a steady marker.
 - **Room** range uses three-dimensional distance from the anchor LED. **LEDs** range uses device-index steps, independent of drawing scale. Both extend outward on either side of the anchor.
 - **Solid** uses one color. **Gradient** uses two to eight stops from the center to the outer range. Endpoints stay at 0% and 100%; intermediate stops can move or be removed.
-- **Triggers & timing** exposes **Notifications**, **Media**, minimum **Urgency**, **Critical accent**, **Duration** or **Entrance**, **Intensity**, and **Fade in and out**.
+- **Triggers & timing** exposes **Notifications**, **Media** (**Audio** on macOS), minimum **Urgency**, **Critical accent**, **Duration** or **Entrance**, **Intensity**, and **Fade in and out**.
 
 For a steady finite indication, choose **One-off → Glow** and clear **Fade in and out**. **Settings → Reduced motion** takes precedence over fades and ripples, substituting steady indications without changing their lifetime. Playback markers remain steady.
 
@@ -82,7 +82,7 @@ On-screen colors are lifted so low-brightness signals remain visible; they do no
 
 When you choose to move beyond preview, follow [the explicit lighting-permission steps](operations.md#choose-whether-to-enable-real-lighting). Check **Settings → Desktop notifications** and the rule's **Notifications** trigger and urgency filter. Only supported desktop notifications are observed; in-app messages and other transports do not automatically qualify.
 
-For a playback marker, enable **Settings → Media playback** and the rule's **Media** trigger. The application must participate in Windows system-media sessions or Linux MPRIS; notification support does not imply media support. LedAlert does not capture audio or read track metadata.
+Enable the rule's **Media** trigger and **Settings → Media playback** on Windows/Linux, or the **Audio** trigger and **Settings → App audio activity** on macOS. Windows uses participating system-media sessions and Linux uses MPRIS. **macOS uses CoreAudio running-output state, including calls and silent streams, not exact player play/pause state.** Notification support does not imply media support. LedAlert does not capture audio or read track metadata.
 
 If a demo works but a real event does not, start with [notification troubleshooting](troubleshooting.md#a-demo-works-but-desktop-notifications-do-not). See [rule behavior](../reference-editing.md#rules-effects-and-palettes) for coalescing and capacity limits.
 

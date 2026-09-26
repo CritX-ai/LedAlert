@@ -17,14 +17,19 @@ fn default_storage_uses_the_native_user_directory_with_unicode_paths() {
     let base = root.path().join("通知 settings");
     #[cfg(windows)]
     let (variable, path) = ("APPDATA", base.join("LedAlert/config.json"));
-    #[cfg(not(windows))]
+    #[cfg(target_os = "macos")]
+    let (variable, path) = (
+        "HOME",
+        base.join("Library/Application Support/LedAlert/config.json"),
+    );
+    #[cfg(not(any(windows, target_os = "macos")))]
     let (variable, path) = ("XDG_CONFIG_HOME", base.join("ledalert/config.json"));
     Config::default().save(&path).unwrap();
-    let result = isolated()
-        .env(variable, &base)
-        .arg("check-config")
-        .output()
-        .unwrap();
+    let mut command = isolated();
+    command.env(variable, &base);
+    #[cfg(target_os = "macos")]
+    command.env("XDG_CONFIG_HOME", root.path().join("not-macos-storage"));
+    let result = command.arg("check-config").output().unwrap();
     assert!(
         result.status.success(),
         "{}",

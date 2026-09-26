@@ -11,7 +11,7 @@ The setup guide remembers your step. Skip it or replay it through **Settings →
 ### Measurements and displays
 
 - Distances use **meters (`m`)**. Both `3.75` and `3,75` work; mixed separators, nonfinite values and thousands grouping do not. Fields commit on **Enter** or focus loss. Display rounding to two decimal places does not round saved geometry.
-- Fresh rooms import Windows or KDE displays with their aspect ratios and relative desktop arrangement. Discovery reads Windows desktop pixels or KDE logical geometry—not screen content, physical distances or window positions.
+- Fresh rooms import macOS, Windows or KDE displays with their aspect ratios and relative desktop arrangement. Discovery reads macOS global desktop points, Windows desktop pixels or KDE logical geometry—not screen content, physical distances or window positions.
 - **Refresh** preserves saved names, placements, sizes, angles and rule destinations. Known connectors can refresh aspect ratios; new displays are offered for import. **Use desktop layout** explicitly rearranges detected displays; **Undo** restores placement.
 - Display rotation snaps to **45°**, including typed angles. Clear **Snap to 45°** or hold **Shift** while dragging or committing a fine adjustment.
 
@@ -61,7 +61,7 @@ Persistent lights are session-local and require a matching Linux notification-da
 
 ## Taskbar examples and application icons
 
-**Rules → Examples** reads actual Windows taskbar pins or Plasma's pinned launchers, resolving application identities, names and icons from local Shell or desktop-entry metadata. Communication/productivity apps start selected; other pins can be included. Suggestions do not guarantee that an app emits desktop notifications.
+**Rules → Examples** reads actual Sidebar/Dock pins on macOS, Windows taskbar pins or Plasma's pinned launchers, resolving application identities, names and icons from local bundle, Shell or desktop-entry metadata. Active Sidebar uses its own pins, not a Dock substitute. Communication/productivity apps start selected; other pins can be included. Suggestions do not guarantee that an app emits desktop notifications.
 
 - **Try examples** cycles locally, names the current app in the status bar, and neither adds rules nor sends pixels.
 - **Add selected** adds only missing explicit rules in one undoable edit, preserving existing rules and fallback. Choose their initial display, then refine each marker.

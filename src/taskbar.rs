@@ -10,13 +10,16 @@ use std::{
 
 use anyhow::{Context, Result, bail, ensure};
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "linux")]
 use crate::app_icons::{absolute_env_path, data_directories};
 use crate::{
     app_icons::{self, IconResolver},
     config::{Rule, RuleOptions},
 };
 
+/// Read-only macOS Sidebar/Dock pin discovery and installed-bundle lookup.
+#[cfg_attr(target_os = "macos", allow(unsafe_code))]
+pub mod macos;
 /// Portable Taskband parsing and canonical Windows application identities.
 pub mod windows;
 #[cfg(target_os = "windows")]
@@ -32,7 +35,7 @@ const MAX_PATH_PROBES: usize = 512;
 
 #[derive(Clone, Debug)]
 pub struct PinnedApp {
-    /// Routing ID: Linux desktop ID without its final suffix, or Windows AUMID.
+    /// Routing ID: Linux desktop ID, Windows AUMID or macOS bundle identifier.
     pub id: String,
     pub name: String,
     pub kind: AppKind,
@@ -51,9 +54,9 @@ pub enum AppKind {
 }
 
 /// Blocking metadata discovery; call from a worker thread, never the UI thread.
-/// Reads KDE launcher metadata or the current Windows user's Taskband pins.
-/// Never invokes a launcher or executes a pinned target.
-#[cfg(not(target_os = "windows"))]
+/// Reads the current KDE task-manager launcher pins. Never invokes a launcher
+/// or executes a pinned target.
+#[cfg(target_os = "linux")]
 pub fn discover() -> Result<Vec<PinnedApp>> {
     let home = absolute_env_path("HOME");
     let config = absolute_env_path("XDG_CONFIG_HOME")
@@ -72,7 +75,17 @@ pub fn discover() -> Result<Vec<PinnedApp>> {
     windows_native::discover()
 }
 
-#[cfg(not(target_os = "windows"))]
+/// Read the active Sidebar Dock replacement's actual pins, or the conventional
+/// Dock's persistent apps while Sidebar is not running. Call from a worker
+/// thread; this never launches a pinned target and never writes a preference.
+/// A malformed or unreadable active Sidebar state fails instead of silently
+/// substituting Dock pins.
+#[cfg(target_os = "macos")]
+pub fn discover() -> Result<Vec<PinnedApp>> {
+    macos::discover()
+}
+
+#[cfg(target_os = "linux")]
 fn application_directories() -> Vec<PathBuf> {
     data_directories()
         .into_iter()
@@ -84,9 +97,17 @@ fn application_directories() -> Vec<PathBuf> {
 /// Call from a worker, never the UI thread. This neither launches nor enumerates
 /// applications. The ID is a routing ID, not a URI or desktop filename: exactly
 /// one `.desktop` suffix is appended, even if the routing ID ends in `.desktop`.
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "linux")]
 pub fn application(id: &str) -> Result<Option<PinnedApp>> {
     application_at(id, &application_directories())
+}
+
+/// Worker-only lookup of an exact macOS bundle identifier, pinned or otherwise.
+/// Call from a worker, never the UI thread. This neither launches nor
+/// enumerates applications.
+#[cfg(target_os = "macos")]
+pub fn application(id: &str) -> Result<Option<PinnedApp>> {
+    macos::application(id)
 }
 
 /// Worker-only lookup of an exact Windows AppUserModelID, pinned or otherwise.

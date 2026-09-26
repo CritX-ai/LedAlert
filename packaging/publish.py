@@ -15,6 +15,7 @@ import tomllib
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
+import macos
 import release
 import verify
 import windows
@@ -25,7 +26,7 @@ MARKER = re.compile(r"<!-- ledalert-release:(\{[^\n]+\}) -->")
 
 
 def artifact_names(version: str) -> list[str]:
-    return release.release_names(version, True) + windows.names(version)
+    return release.release_names(version, True) + windows.names(version) + macos.names(version)
 
 
 def request(url: str, *, data: bytes | None = None, method: str = "GET",
@@ -74,7 +75,7 @@ def release_record(version: str) -> dict | None:
 def artifact_recovery(version: str, run_id: str, kind: str) -> bool:
     """Reuse this run's original bytes, including incomplete external publications."""
     verify.require(re.fullmatch(r"[0-9]+", run_id) is not None, "Missing or invalid workflow run ID")
-    verify.require(kind in {"windows", "publication"}, "Unknown recovery artifact kind")
+    verify.require(kind in {"windows", "macos", "publication"}, "Unknown recovery artifact kind")
     name = f"{kind}-release-{run_id}"
     result = github(f"/actions/runs/{run_id}/artifacts?per_page=100&name={name}")
     artifacts = result["artifacts"]
@@ -143,6 +144,8 @@ def receipt(record: dict, version: str) -> dict:
     verify.require(value.get("windows_signing") in {"unsigned", "certificate-store"} and
                    (prerelease or value["windows_signing"] == "certificate-store"),
                    "Stable publication receipt must identify signed Windows packages")
+    verify.require(value.get("macos_signing") == "ad-hoc",
+                   "macOS packages are only ad-hoc signed; the receipt must never claim Developer ID, notarization or Apple trust")
     return value
 
 
@@ -232,12 +235,17 @@ def local_receipt(output: Path, version: str, commit: str) -> dict:
     verify.inspect_crate(release.ROOT, output / names[3])
     prerelease = release.version_info(version)[1]
     info = windows.inspect_artifacts(release.ROOT, output, commit=commit, require_signed=not prerelease)
+    # Ad-hoc signing is a local integrity check only: unnotarized, no Developer
+    # ID and no Apple trust claim, in the release notes or anywhere else.
+    mac_info = macos.inspect_artifacts(release.ROOT, output, commit=commit)
+    verify.require(mac_info.get("signing") == "ad-hoc",
+                   "macOS package must be ad-hoc signed; it is unnotarized and carries no Apple trust claim")
     return {"version": version, "commit": commit, "prerelease": prerelease,
-            "windows_signing": info["signing"], "sha256": hashes}
+            "windows_signing": info["signing"], "macos_signing": mac_info["signing"], "sha256": hashes}
 
 
-def assemble(linux: Path, windows_output: Path, output: Path, version: str, commit: str) -> None:
-    """Combine independently verified builds without overwriting either checksum file."""
+def assemble(linux: Path, windows_output: Path, macos_output: Path, output: Path, version: str, commit: str) -> None:
+    """Combine independently verified builds without overwriting any checksum file."""
     names = artifact_names(version)
     release.prepare_output(output, names + [".builder-image"])
     with tempfile.TemporaryDirectory(prefix=".ledalert-assemble-", dir=output) as temporary:
@@ -245,7 +253,12 @@ def assemble(linux: Path, windows_output: Path, output: Path, version: str, comm
         for name in names:
             if name == "SHA256SUMS":
                 continue
-            source = (windows_output if name in windows.names(version) else linux) / name
+            if name in macos.names(version):
+                source = macos_output / name
+            elif name in windows.names(version):
+                source = windows_output / name
+            else:
+                source = linux / name
             verify.require(source.is_file() and not source.is_symlink(), f"Missing or unsafe build artifact: {name}")
             shutil.copyfile(source, staging / name)
         (staging / "SHA256SUMS").write_text("".join(
@@ -280,10 +293,16 @@ def publish_github(output: Path, version: str, commit: str) -> None:
         )
         registry_note = ("This is a GitHub-only prerelease; the .crate is a source download, not a crates.io publication."
                          if prerelease else "The crates.io publication follows this release.")
+        macos_note = ("The macOS package is a native Apple Silicon (aarch64) build shipped as "
+                      "LedAlert.app (binary: LedAlert.app/Contents/MacOS/ledalert). Compatibility is exercised "
+                      "on macOS 27; the 14.2 loader minimum is not older-OS acceptance. "
+                      "It is ad-hoc signed only: unnotarized, with no Developer ID or Apple trust claim. "
+                      "Gatekeeper may block downloaded copies; any per-app approval is an explicit user decision.")
         body = (f"{release_notes(version)}\n\n"
                 f"Linux x86_64 (glibc 2.36+), Windows 11 x86_64 portable ZIP and {'signed' if signed else 'unsigned development'} MSIX, "
-                f"source and Cargo package. Source commit: `{commit}`.\n\n"
+                f"macOS Apple Silicon (aarch64) app bundle, source and Cargo package. Source commit: `{commit}`.\n\n"
                 f"{windows_note} Portable Windows execution cannot read notifications. "
+                f"{macos_note} "
                 f"Verify downloads with SHA256SUMS. {registry_note}\n\n"
                 f"<!-- ledalert-release:{json.dumps(value, sort_keys=True)} -->")
         record = github("/releases", method="POST", payload={"tag_name": f"v{version}", "target_commitish": commit,
@@ -383,11 +402,13 @@ def publish_crate(output: Path, version: str, commit: str, token: str | None) ->
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("phase", choices=("preflight", "windows-recovery", "assemble", "github", "crate", "crate-native"))
+    parser.add_argument("phase", choices=("preflight", "windows-recovery", "macos-recovery", "assemble",
+                                          "github", "crate", "crate-native"))
     parser.add_argument("--commit", required=True)
     parser.add_argument("--output", type=Path, default=release.ROOT / "dist")
     parser.add_argument("--linux-output", type=Path)
     parser.add_argument("--windows-output", type=Path)
+    parser.add_argument("--macos-output", type=Path)
     args = parser.parse_args()
     token = os.environ.pop("CARGO_REGISTRY_TOKEN", None)
     try:
@@ -395,22 +416,25 @@ def main() -> None:
             publish_crate_native(args.output.resolve(), args.commit, token)
             return
         version = context(args.commit)
-        if args.phase in {"preflight", "windows-recovery"}:
+        if args.phase in {"preflight", "windows-recovery", "macos-recovery"}:
             if args.phase == "preflight":
                 ready = preflight(version, args.commit)
                 values = {"release": ready, "prerelease": release.version_info(version)[1],
                           "recover": ready and artifact_recovery(version, os.environ.get("GITHUB_RUN_ID", ""), "publication")}
             else:
-                values = {"found": artifact_recovery(version, os.environ.get("GITHUB_RUN_ID", ""), "windows")}
+                values = {"found": artifact_recovery(version, os.environ.get("GITHUB_RUN_ID", ""),
+                                                     args.phase.split("-", 1)[0])}
             output = os.environ.get("GITHUB_OUTPUT")
             verify.require(bool(output), "Missing workflow output channel")
             with Path(output).open("a", encoding="utf-8") as file:
                 for key, value in values.items():
                     file.write(f"{key}={'true' if value else 'false'}\n")
         elif args.phase == "assemble":
-            verify.require(args.linux_output is not None and args.windows_output is not None,
-                           "Assembly requires --linux-output and --windows-output")
-            assemble(args.linux_output.resolve(), args.windows_output.resolve(), args.output.resolve(), version, args.commit)
+            verify.require(args.linux_output is not None and args.windows_output is not None and
+                           args.macos_output is not None,
+                           "Assembly requires --linux-output, --windows-output and --macos-output")
+            assemble(args.linux_output.resolve(), args.windows_output.resolve(), args.macos_output.resolve(),
+                     args.output.resolve(), version, args.commit)
         elif args.phase == "github":
             publish_github(args.output.resolve(), version, args.commit)
         else:

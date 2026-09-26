@@ -27,7 +27,7 @@ BASELINE = {"distribution": "debian", "version": "12", "codename": "bookworm",
             "glibc_max": GLIBC_MAX, "rust_toolchain": RUST_TOOLCHAIN, "container_image": BASE_IMAGE}
 BUILDER_RECIPE = Path("/usr/local/share/ledalert/Containerfile")
 FILES = (".gitignore", ".github/workflows/verify.yml", ".github/workflows/pages.yml",
-         ".github/workflows/release.yml", "Cargo.toml", "Cargo.lock",
+         ".github/workflows/release.yml", "Cargo.toml", "Cargo.lock", "build.rs",
          "README.md", "CHANGELOG.md", "RELEASE.md", "SECURITY.md", "packaging/Containerfile")
 TREES = ("src", "tests", "examples", "tools", "assets", "packaging", "docs")
 NOTICE_NAME = re.compile(r"(?:^|[-_.])(licen[cs]e|copying|notice|copyright|ofl|ufl)(?:$|[-_.])", re.I)

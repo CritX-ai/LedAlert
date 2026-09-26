@@ -1,6 +1,6 @@
 # Windows verification
 
-This is a repeatable verification procedure, **not a record that every case has passed**. Record the exact commit, Windows edition/build, architecture, session type, commands and observed results for each run. `0.3.0-alpha` supports Windows 11 x64; Windows Server CI is not Windows 11 desktop acceptance. macOS support and broader verification are planned for beta, not provided by these tools.
+This is a repeatable verification procedure, **not a record that every case has passed**. Record the exact commit, Windows edition/build, architecture, session type, commands and observed results for each run. The Windows target is Windows 11 x64; Windows Server CI is not Windows 11 desktop acceptance. Historical alpha evidence below is not a new Windows acceptance run for 0.3.0-beta. macOS has separate [verification and permission limits](support.md#macos-verification).
 
 The committed [native probe](https://github.com/CritX-ai/LedAlert/blob/main/examples/windows_probe.rs) uses LedAlert's production taskbar, display and desktop-monitor adapters. The [PowerShell helper](https://github.com/CritX-ai/LedAlert/blob/main/tools/windows-verify.ps1) supplies an **explicitly opt-in, isolated** development package and synthetic toast fixture. Both are in the source archive; the Rust example also ships in the Cargo source package. They do not depend on an earlier maintainer's temporary scripts, machine paths, screenshots, certificates or captured notifications.
 

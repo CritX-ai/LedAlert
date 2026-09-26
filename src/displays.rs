@@ -7,6 +7,9 @@ use serde_json::Value;
 
 use crate::config::{Config, MAX_SCREENS, Point, Screen};
 
+/// Read-only CoreGraphics macOS display geometry.
+#[cfg_attr(target_os = "macos", allow(unsafe_code))]
+pub mod macos;
 pub mod windows;
 
 const MAX_OUTPUT_BYTES: usize = 1024 * 1024;
@@ -16,7 +19,7 @@ const MAX_DIMENSION: f32 = 32_768.0;
 const MAX_COORDINATE: f32 = 131_072.0;
 const ROOM_FRACTION: f32 = 0.65;
 
-/// Desktop coordinates (KDE logical units or Windows pixels), not physical measurements.
+/// Desktop coordinates (KDE logical units, macOS points or Windows pixels), not physical measurements.
 #[derive(Clone, Debug, PartialEq)]
 pub struct DetectedDisplay {
     pub connector: String,
@@ -32,7 +35,7 @@ pub struct DetectedDisplay {
 ///
 /// This is blocking: callers must use a worker thread. The child has a three-second
 /// deadline and a one-MiB stdout limit; stderr is discarded rather than accumulated.
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 pub fn discover() -> Result<Vec<DetectedDisplay>> {
     use std::{
         io::{ErrorKind, Read},
@@ -128,9 +131,16 @@ pub fn discover() -> Result<Vec<DetectedDisplay>> {
     windows::discover()
 }
 
-#[cfg(not(any(unix, windows)))]
+/// Read the active CoreGraphics displays in one common desktop coordinate
+/// space. Call from a worker thread; this changes no display setting.
+#[cfg(target_os = "macos")]
 pub fn discover() -> Result<Vec<DetectedDisplay>> {
-    anyhow::bail!("Display discovery is available on Windows and KDE")
+    macos::discover()
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+pub fn discover() -> Result<Vec<DetectedDisplay>> {
+    anyhow::bail!("Display discovery is available on Windows, macOS and KDE")
 }
 
 /// Parse the JSON emitted by `kscreen-doctor -j`. Inactive outputs are ignored;

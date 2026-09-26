@@ -192,25 +192,7 @@ def inspect_artifacts(root: Path, output: Path, *, commit: str | None = None, re
     for name, size in LOGOS.items():
         verify.require(portable[name] == logo(size), f"Package logo mismatch: {name}")
     verify.require(portable["PORTABLE.txt"] == PORTABLE_NOTICE, "Missing portable notification limitations")
-    inventory = verify.read_json(portable["licenses/INVENTORY.json"], "Windows notice inventory")
-    verify.require(inventory.get("target") == TARGET and bool(inventory.get("packages")), "Windows notice target mismatch")
-    locked = {(p["name"], p["version"]): p for p in tomllib.loads((root / "Cargo.lock").read_text())["package"]}
-    referenced = {"licenses/INVENTORY.json", "licenses/Silkscreen-OFL.txt", "licenses/Silkscreen-metadata.txt", "licenses/Saira-OFL.txt"}
-    seen = set()
-    for package in inventory["packages"]:
-        key = (package["name"], package["version"])
-        verify.require(key not in seen and key in locked and package.get("crate_sha256") == locked[key].get("checksum") and
-                       package.get("registry_source") == locked[key].get("source") and
-                       bool(package.get("license_expression")) and bool(package.get("notices")), "Invalid Windows dependency notice provenance")
-        seen.add(key)
-    notices = [notice for package in inventory["packages"] for notice in package["notices"]]
-    runtime = inventory.get("rust_runtime", {})
-    verify.require(bool(runtime.get("notices")), "Missing Windows Rust runtime notices")
-    for notice in notices + runtime["notices"]:
-        name = notice["path"]
-        verify.require(name.startswith("licenses/") and name in portable and bool(portable[name].strip()) and
-                       release.digest(portable[name]) == notice.get("sha256"), f"Missing or changed Windows notice: {name}")
-        referenced.add(name)
+    referenced = verify.inspect_target_notices(root, portable, TARGET)
     legal = verify.first_party_license(root)
     docs = {name for name in release.source_files(root)
             if name.startswith(("docs/", "assets/")) or name in

@@ -291,6 +291,293 @@
         "repo": "aclysma/profiling",
         "commit": "8271551172eb6fa4cba47369aedd93790c623df9"
       }
+    ],
+    "accesskit_consumer-0.38.0": [
+      {
+        "file": "accesskit-c88605b96d04/LICENSE-APACHE",
+        "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "source": "https://raw.githubusercontent.com/AccessKit/accesskit/c88605b96d04431f9c3c792464a0f2f253480e94/LICENSE-APACHE",
+        "repo": "AccessKit/accesskit",
+        "commit": "c88605b96d04431f9c3c792464a0f2f253480e94"
+      },
+      {
+        "file": "accesskit-c88605b96d04/LICENSE-MIT",
+        "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+        "source": "https://raw.githubusercontent.com/AccessKit/accesskit/c88605b96d04431f9c3c792464a0f2f253480e94/LICENSE-MIT",
+        "repo": "AccessKit/accesskit",
+        "commit": "c88605b96d04431f9c3c792464a0f2f253480e94"
+      },
+      {
+        "file": "accesskit-c88605b96d04/LICENSE.chromium",
+        "sha256": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308",
+        "source": "https://raw.githubusercontent.com/AccessKit/accesskit/c88605b96d04431f9c3c792464a0f2f253480e94/LICENSE.chromium",
+        "repo": "AccessKit/accesskit",
+        "commit": "c88605b96d04431f9c3c792464a0f2f253480e94"
+      }
+    ],
+    "accesskit_macos-0.26.3": [
+      {
+        "file": "accesskit-c88605b96d04/LICENSE-APACHE",
+        "sha256": "62c7a1e35f56406896d7aa7ca52d0cc0d272ac022b5d2796e7d6905db8a3636a",
+        "source": "https://raw.githubusercontent.com/AccessKit/accesskit/c88605b96d04431f9c3c792464a0f2f253480e94/LICENSE-APACHE",
+        "repo": "AccessKit/accesskit",
+        "commit": "c88605b96d04431f9c3c792464a0f2f253480e94"
+      },
+      {
+        "file": "accesskit-c88605b96d04/LICENSE-MIT",
+        "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+        "source": "https://raw.githubusercontent.com/AccessKit/accesskit/c88605b96d04431f9c3c792464a0f2f253480e94/LICENSE-MIT",
+        "repo": "AccessKit/accesskit",
+        "commit": "c88605b96d04431f9c3c792464a0f2f253480e94"
+      },
+      {
+        "file": "accesskit-c88605b96d04/LICENSE.chromium",
+        "sha256": "845022e0c1db1abb41a6ba4cd3c4b674ec290f3359d9d3c78ae558d4c0ed9308",
+        "source": "https://raw.githubusercontent.com/AccessKit/accesskit/c88605b96d04431f9c3c792464a0f2f253480e94/LICENSE.chromium",
+        "repo": "AccessKit/accesskit",
+        "commit": "c88605b96d04431f9c3c792464a0f2f253480e94"
+      }
+    ],
+    "block2-0.5.1": [
+      {
+        "file": "objc2-4fc083f1c6d6/LICENSE.txt",
+        "sha256": "e353f37b12aefbb9f9b29490e837cfee05d9bda70804b3562839a3285c1df1e5",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/4fc083f1c6d6784577e38b0ee8dbd344481e2fd2/LICENSE.txt",
+        "repo": "madsmtm/objc2",
+        "commit": "4fc083f1c6d6784577e38b0ee8dbd344481e2fd2"
+      }
+    ],
+    "block2-0.6.2": [
+      {
+        "file": "objc2-b4167b582b2f/LICENSE.md",
+        "sha256": "7f976f7e9cb2d87df7230606feb932c3f21ac0e664045a775b600046ff850c54",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/b4167b582b2f75f9a1be75495c41b765344fd03c/LICENSE.md",
+        "repo": "madsmtm/objc2",
+        "commit": "b4167b582b2f75f9a1be75495c41b765344fd03c"
+      },
+      {
+        "file": "objc2-4fc083f1c6d6/LICENSE.txt",
+        "sha256": "e353f37b12aefbb9f9b29490e837cfee05d9bda70804b3562839a3285c1df1e5",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/4fc083f1c6d6784577e38b0ee8dbd344481e2fd2/LICENSE.txt",
+        "repo": "madsmtm/objc2",
+        "commit": "4fc083f1c6d6784577e38b0ee8dbd344481e2fd2"
+      }
+    ],
+    "dispatch-0.2.0": [
+      {
+        "file": "rust-dispatch-82d6c7a5b75d/LICENSE-declaration.txt",
+        "sha256": "05c60b829931ef7f1f130735843c11f5cf9cc69546eca5fc941d014781c68e31",
+        "source": "https://raw.githubusercontent.com/SSheldon/rust-dispatch/82d6c7a5b75dc0c71c3f46f87bb6c16a476f7748/Cargo.toml",
+        "repo": "SSheldon/rust-dispatch",
+        "commit": "82d6c7a5b75dc0c71c3f46f87bb6c16a476f7748"
+      },
+      {
+        "file": "objc2-4fc083f1c6d6/LICENSE.txt",
+        "sha256": "e353f37b12aefbb9f9b29490e837cfee05d9bda70804b3562839a3285c1df1e5",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/4fc083f1c6d6784577e38b0ee8dbd344481e2fd2/LICENSE.txt",
+        "repo": "madsmtm/objc2",
+        "commit": "4fc083f1c6d6784577e38b0ee8dbd344481e2fd2"
+      }
+    ],
+    "dispatch2-0.3.1": [
+      {
+        "file": "objc2-8852b424193c/LICENSE.md",
+        "sha256": "7f976f7e9cb2d87df7230606feb932c3f21ac0e664045a775b600046ff850c54",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/8852b424193ca41602281b3d7540d7c8ed51e49a/LICENSE.md",
+        "repo": "madsmtm/objc2",
+        "commit": "8852b424193ca41602281b3d7540d7c8ed51e49a"
+      },
+      {
+        "file": "objc2-4fc083f1c6d6/LICENSE.txt",
+        "sha256": "e353f37b12aefbb9f9b29490e837cfee05d9bda70804b3562839a3285c1df1e5",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/4fc083f1c6d6784577e38b0ee8dbd344481e2fd2/LICENSE.txt",
+        "repo": "madsmtm/objc2",
+        "commit": "4fc083f1c6d6784577e38b0ee8dbd344481e2fd2"
+      }
+    ],
+    "objc-sys-0.3.5": [
+      {
+        "file": "objc2-4fc083f1c6d6/LICENSE.txt",
+        "sha256": "e353f37b12aefbb9f9b29490e837cfee05d9bda70804b3562839a3285c1df1e5",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/4fc083f1c6d6784577e38b0ee8dbd344481e2fd2/LICENSE.txt",
+        "repo": "madsmtm/objc2",
+        "commit": "4fc083f1c6d6784577e38b0ee8dbd344481e2fd2"
+      }
+    ],
+    "objc2-0.5.2": [
+      {
+        "file": "objc2-4fc083f1c6d6/LICENSE.txt",
+        "sha256": "e353f37b12aefbb9f9b29490e837cfee05d9bda70804b3562839a3285c1df1e5",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/4fc083f1c6d6784577e38b0ee8dbd344481e2fd2/LICENSE.txt",
+        "repo": "madsmtm/objc2",
+        "commit": "4fc083f1c6d6784577e38b0ee8dbd344481e2fd2"
+      }
+    ],
+    "objc2-0.6.4": [
+      {
+        "file": "objc2-8852b424193c/LICENSE.md",
+        "sha256": "7f976f7e9cb2d87df7230606feb932c3f21ac0e664045a775b600046ff850c54",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/8852b424193ca41602281b3d7540d7c8ed51e49a/LICENSE.md",
+        "repo": "madsmtm/objc2",
+        "commit": "8852b424193ca41602281b3d7540d7c8ed51e49a"
+      },
+      {
+        "file": "objc2-4fc083f1c6d6/LICENSE.txt",
+        "sha256": "e353f37b12aefbb9f9b29490e837cfee05d9bda70804b3562839a3285c1df1e5",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/4fc083f1c6d6784577e38b0ee8dbd344481e2fd2/LICENSE.txt",
+        "repo": "madsmtm/objc2",
+        "commit": "4fc083f1c6d6784577e38b0ee8dbd344481e2fd2"
+      }
+    ],
+    "objc2-app-kit-0.2.2": [
+      {
+        "file": "objc2-e282618be4c3/LICENSE.txt",
+        "sha256": "e353f37b12aefbb9f9b29490e837cfee05d9bda70804b3562839a3285c1df1e5",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/e282618be4c3a3b9542957e0c8540e9588472ce8/LICENSE.txt",
+        "repo": "madsmtm/objc2",
+        "commit": "e282618be4c3a3b9542957e0c8540e9588472ce8"
+      }
+    ],
+    "objc2-app-kit-0.3.2": [
+      {
+        "file": "objc2-7b1abfd750a2/LICENSE.md",
+        "sha256": "7f976f7e9cb2d87df7230606feb932c3f21ac0e664045a775b600046ff850c54",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md",
+        "repo": "madsmtm/objc2",
+        "commit": "7b1abfd750a2cacaea71d6a56ecfb83cb7de560b"
+      },
+      {
+        "file": "objc2-4fc083f1c6d6/LICENSE.txt",
+        "sha256": "e353f37b12aefbb9f9b29490e837cfee05d9bda70804b3562839a3285c1df1e5",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/4fc083f1c6d6784577e38b0ee8dbd344481e2fd2/LICENSE.txt",
+        "repo": "madsmtm/objc2",
+        "commit": "4fc083f1c6d6784577e38b0ee8dbd344481e2fd2"
+      }
+    ],
+    "objc2-core-data-0.2.2": [
+      {
+        "file": "objc2-e282618be4c3/LICENSE.txt",
+        "sha256": "e353f37b12aefbb9f9b29490e837cfee05d9bda70804b3562839a3285c1df1e5",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/e282618be4c3a3b9542957e0c8540e9588472ce8/LICENSE.txt",
+        "repo": "madsmtm/objc2",
+        "commit": "e282618be4c3a3b9542957e0c8540e9588472ce8"
+      }
+    ],
+    "objc2-core-foundation-0.3.2": [
+      {
+        "file": "objc2-7b1abfd750a2/LICENSE.md",
+        "sha256": "7f976f7e9cb2d87df7230606feb932c3f21ac0e664045a775b600046ff850c54",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md",
+        "repo": "madsmtm/objc2",
+        "commit": "7b1abfd750a2cacaea71d6a56ecfb83cb7de560b"
+      },
+      {
+        "file": "objc2-4fc083f1c6d6/LICENSE.txt",
+        "sha256": "e353f37b12aefbb9f9b29490e837cfee05d9bda70804b3562839a3285c1df1e5",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/4fc083f1c6d6784577e38b0ee8dbd344481e2fd2/LICENSE.txt",
+        "repo": "madsmtm/objc2",
+        "commit": "4fc083f1c6d6784577e38b0ee8dbd344481e2fd2"
+      }
+    ],
+    "objc2-core-graphics-0.3.2": [
+      {
+        "file": "objc2-7b1abfd750a2/LICENSE.md",
+        "sha256": "7f976f7e9cb2d87df7230606feb932c3f21ac0e664045a775b600046ff850c54",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md",
+        "repo": "madsmtm/objc2",
+        "commit": "7b1abfd750a2cacaea71d6a56ecfb83cb7de560b"
+      },
+      {
+        "file": "objc2-4fc083f1c6d6/LICENSE.txt",
+        "sha256": "e353f37b12aefbb9f9b29490e837cfee05d9bda70804b3562839a3285c1df1e5",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/4fc083f1c6d6784577e38b0ee8dbd344481e2fd2/LICENSE.txt",
+        "repo": "madsmtm/objc2",
+        "commit": "4fc083f1c6d6784577e38b0ee8dbd344481e2fd2"
+      }
+    ],
+    "objc2-core-image-0.2.2": [
+      {
+        "file": "objc2-e282618be4c3/LICENSE.txt",
+        "sha256": "e353f37b12aefbb9f9b29490e837cfee05d9bda70804b3562839a3285c1df1e5",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/e282618be4c3a3b9542957e0c8540e9588472ce8/LICENSE.txt",
+        "repo": "madsmtm/objc2",
+        "commit": "e282618be4c3a3b9542957e0c8540e9588472ce8"
+      }
+    ],
+    "objc2-encode-4.1.0": [
+      {
+        "file": "objc2-8d214f547736/LICENSE.md",
+        "sha256": "7f976f7e9cb2d87df7230606feb932c3f21ac0e664045a775b600046ff850c54",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/8d214f5477365ffcbcbb7de058c86ed9a518efb7/LICENSE.md",
+        "repo": "madsmtm/objc2",
+        "commit": "8d214f5477365ffcbcbb7de058c86ed9a518efb7"
+      },
+      {
+        "file": "objc2-4fc083f1c6d6/LICENSE.txt",
+        "sha256": "e353f37b12aefbb9f9b29490e837cfee05d9bda70804b3562839a3285c1df1e5",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/4fc083f1c6d6784577e38b0ee8dbd344481e2fd2/LICENSE.txt",
+        "repo": "madsmtm/objc2",
+        "commit": "4fc083f1c6d6784577e38b0ee8dbd344481e2fd2"
+      }
+    ],
+    "objc2-foundation-0.2.2": [
+      {
+        "file": "objc2-e282618be4c3/LICENSE.txt",
+        "sha256": "e353f37b12aefbb9f9b29490e837cfee05d9bda70804b3562839a3285c1df1e5",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/e282618be4c3a3b9542957e0c8540e9588472ce8/LICENSE.txt",
+        "repo": "madsmtm/objc2",
+        "commit": "e282618be4c3a3b9542957e0c8540e9588472ce8"
+      }
+    ],
+    "objc2-foundation-0.3.2": [
+      {
+        "file": "objc2-7b1abfd750a2/LICENSE.md",
+        "sha256": "7f976f7e9cb2d87df7230606feb932c3f21ac0e664045a775b600046ff850c54",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md",
+        "repo": "madsmtm/objc2",
+        "commit": "7b1abfd750a2cacaea71d6a56ecfb83cb7de560b"
+      },
+      {
+        "file": "objc2-4fc083f1c6d6/LICENSE.txt",
+        "sha256": "e353f37b12aefbb9f9b29490e837cfee05d9bda70804b3562839a3285c1df1e5",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/4fc083f1c6d6784577e38b0ee8dbd344481e2fd2/LICENSE.txt",
+        "repo": "madsmtm/objc2",
+        "commit": "4fc083f1c6d6784577e38b0ee8dbd344481e2fd2"
+      }
+    ],
+    "objc2-io-surface-0.3.2": [
+      {
+        "file": "objc2-7b1abfd750a2/LICENSE.md",
+        "sha256": "7f976f7e9cb2d87df7230606feb932c3f21ac0e664045a775b600046ff850c54",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/7b1abfd750a2cacaea71d6a56ecfb83cb7de560b/LICENSE.md",
+        "repo": "madsmtm/objc2",
+        "commit": "7b1abfd750a2cacaea71d6a56ecfb83cb7de560b"
+      },
+      {
+        "file": "objc2-4fc083f1c6d6/LICENSE.txt",
+        "sha256": "e353f37b12aefbb9f9b29490e837cfee05d9bda70804b3562839a3285c1df1e5",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/4fc083f1c6d6784577e38b0ee8dbd344481e2fd2/LICENSE.txt",
+        "repo": "madsmtm/objc2",
+        "commit": "4fc083f1c6d6784577e38b0ee8dbd344481e2fd2"
+      }
+    ],
+    "objc2-metal-0.2.2": [
+      {
+        "file": "objc2-e282618be4c3/LICENSE.txt",
+        "sha256": "e353f37b12aefbb9f9b29490e837cfee05d9bda70804b3562839a3285c1df1e5",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/e282618be4c3a3b9542957e0c8540e9588472ce8/LICENSE.txt",
+        "repo": "madsmtm/objc2",
+        "commit": "e282618be4c3a3b9542957e0c8540e9588472ce8"
+      }
+    ],
+    "objc2-quartz-core-0.2.2": [
+      {
+        "file": "objc2-e282618be4c3/LICENSE.txt",
+        "sha256": "e353f37b12aefbb9f9b29490e837cfee05d9bda70804b3562839a3285c1df1e5",
+        "source": "https://raw.githubusercontent.com/madsmtm/objc2/e282618be4c3a3b9542957e0c8540e9588472ce8/LICENSE.txt",
+        "repo": "madsmtm/objc2",
+        "commit": "e282618be4c3a3b9542957e0c8540e9588472ce8"
+      }
     ]
   }
 }

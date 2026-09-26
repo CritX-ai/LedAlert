@@ -1,10 +1,64 @@
 # LedAlert releases
 
+## 0.3.0-beta — macOS and Sidebar prerelease
+
+**[v0.3.0-beta](https://github.com/CritX-ai/LedAlert/releases/tag/v0.3.0-beta)** adds native **macOS 27 / Apple Silicon** and **Sidebar.app 2.2.6** compatibility alongside Windows 11 x64 and Linux/KDE. This is a **GitHub-only development prerelease**, not the latest stable release and not a crates.io publication. Unversioned Cargo and cargo-binstall still select the stable published crate.
+
+**Trust boundary:** Windows packages are unsigned; the MSIX is not a normal production installer. The macOS app is ad-hoc signed and unnotarized. Checksums and local signature integrity do not establish publisher trust. Notification access and physical-lighting consent remain separate, explicit choices. See the [step-by-step installation guide](docs/guide/install.md).
+
+### Beta downloads
+
+Download artifacts and checksums from this exact release. Do not mix versions or replace published bytes.
+
+| File | Contents |
+| :--- | :--- |
+| [`ledalert-0.3.0-beta-macos-aarch64.tar.gz`](https://github.com/CritX-ai/LedAlert/releases/download/v0.3.0-beta/ledalert-0.3.0-beta-macos-aarch64.tar.gz) | Apple Silicon `LedAlert.app`, native icon, offline manual, notices and provenance; ad-hoc signed, not notarized. |
+| [`MACOS-SHA256SUMS`](https://github.com/CritX-ai/LedAlert/releases/download/v0.3.0-beta/MACOS-SHA256SUMS) | macOS archive checksum. |
+| [`ledalert-0.3.0-beta-windows-x86_64.zip`](https://github.com/CritX-ai/LedAlert/releases/download/v0.3.0-beta/ledalert-0.3.0-beta-windows-x86_64.zip) | Portable executable, registration manifest, offline manual and notices. |
+| [`ledalert-0.3.0-beta-windows-x86_64.msix`](https://github.com/CritX-ai/LedAlert/releases/download/v0.3.0-beta/ledalert-0.3.0-beta-windows-x86_64.msix) | **Unsigned development artifact**, not a trusted installer. |
+| [`WINDOWS-SHA256SUMS`](https://github.com/CritX-ai/LedAlert/releases/download/v0.3.0-beta/WINDOWS-SHA256SUMS) | Checksums for the Windows pair. |
+| [`ledalert-0.3.0-beta-linux-x86_64.tar.gz`](https://github.com/CritX-ai/LedAlert/releases/download/v0.3.0-beta/ledalert-0.3.0-beta-linux-x86_64.tar.gz) | Linux executable, offline manual, launcher and notices; glibc 2.36 or newer. |
+| [`ledalert-0.3.0-beta-source.tar.gz`](https://github.com/CritX-ai/LedAlert/releases/download/v0.3.0-beta/ledalert-0.3.0-beta-source.tar.gz) | Locked source, tests, native probes and packaging tools. |
+| [`ledalert-0.3.0-beta.crate`](https://github.com/CritX-ai/LedAlert/releases/download/v0.3.0-beta/ledalert-0.3.0-beta.crate) | Cargo package source; downloadable, **not published to crates.io**. |
+| [`SHA256SUMS`](https://github.com/CritX-ai/LedAlert/releases/download/v0.3.0-beta/SHA256SUMS) | Combined checksums for the release assets. |
+
+### macOS highlights
+
+- Native display UUIDs and global desktop-point geometry, native bundle identities/icons, and application storage under `~/Library/Application Support/LedAlert`.
+- Actual Sidebar pins while it runs, respecting hidden entries and complete manual order; conventional Dock pins otherwise. This is compatibility with Sidebar, **not a new Sidebar-hosted plugin**. Unsupported active Sidebar metadata fails the scan without a Dock substitute.
+- Read-only notification UUID membership, IDs, application identities and timestamps from the protected store; never notification payloads. Full Disk Access is a broad, separately chosen OS permission. Startup, recovery and permission restoration do not replay history; loss invalidates uncertain notification generations.
+- Fail-closed console-lock observation and CoreAudio app output-activity markers. Audio activity includes calls and silent streams, **not exact player play/pause state**. No audio capture, track metadata, media helper executables or volume changes.
+- Arm64 application packaging, portable Mach-O/inventory validation, native extraction/signature/GUI smoke and target-specific cargo-binstall metadata. Linux and Windows release/signature gates remain intact.
+
+### macOS build and signing
+
+From the [tagged source](https://github.com/CritX-ai/LedAlert/tree/v0.3.0-beta), on Apple Silicon with Xcode command-line tools/macOS SDK and Python 3.11+:
+
+```sh
+rustup toolchain install 1.95.0 --profile minimal --component rust-docs --target aarch64-apple-darwin
+python3 -B packaging/macos.py --verify --gui-smoke --output dist/macos
+python3 -B packaging/macos.py --inspect --output dist/macos
+```
+
+The package contains `LedAlert.app`, `BUILD-INFO.json` and `INSTALL.txt`; the executable is `LedAlert.app/Contents/MacOS/ledalert`. The manifest records all source and payload hashes, SDK/build-host versions, minimum deployment target and signing status. Existing release filenames are never overwritten. `--gui-smoke` explicitly launches only the extracted app with an isolated setup and lighting disabled; it neither installs the app nor grants OS access.
+
+**Ad-hoc is not Developer ID signing, notarization or Apple trust.** Gatekeeper may block downloaded copies; do not disable it or strip quarantine. If you do not accept the beta's trust boundary, build the tagged source or wait for a trusted installer. The 14.2 deployment floor is not a compatibility claim for unexercised macOS versions. Intel/universal packages are not release targets.
+
+The macOS CI jobs use the documented [`xcode-27` Apple Silicon runner](https://github.com/actions/runner-images/issues/14404). Hosted regressions/package checks do not establish GUI or permission acceptance. Release assembly compares the macOS source manifest against Linux/source/crate and Windows inputs, preserves exact native bytes for recovery, and records `macos_signing: ad-hoc` without weakening the [stable Windows signing gate](#windows-build-and-signing).
+
+### Beta verification scope
+
+Run the [development checks](#development-checks), native inventory/observation from [macOS verification](docs/support.md#macos-verification), and the packaging commands above. Current-workstation checks exercise actual Sidebar pin/icon resolution, display import, native GUI status, an unlocked console and idle CoreAudio metadata. The native notification reader is exercised against owned WAL fixtures through its 4,096-record bound, retained-history exclusion and payload-read rejection; lifecycle tests exercise baseline, raises/removals, discontinuities and fail-closed freshness.
+
+**Live notification access is denied in this verification environment.** Grant/revocation, real notification delivery/dismissal, active audio, interactive lock/unlock and physical lighting have not been claimed as verified. Historical Windows evidence below is not a new Windows acceptance run, and this macOS work is not a new Linux interactive acceptance run. Private captures, device addresses and notification contents do not belong in public release assets.
+
+The [production roadmap](docs/roadmap.md#release-boundary) separates this beta from trusted installers, clean-machine upgrades and the remaining live acceptance checks.
+
 ## 0.3.0-alpha — Windows 11 prerelease
 
 LedAlert's [v0.3.0-alpha GitHub prerelease](https://github.com/CritX-ai/LedAlert/releases/tag/v0.3.0-alpha) adds **Windows 11 x64** alongside Linux x86_64 with KDE Plasma on Wayland. It is **not the latest stable release and is not published to crates.io**. Unversioned `cargo install ledalert --locked` and cargo-binstall continue to select the stable published crate and its available targets.
 
-The alpha ships a Windows portable ZIP and an **unsigned, development-only MSIX**. There is no production signed installer yet. macOS is not implemented in this alpha: the planned beta adds macOS support and verification, followed by cross-platform polishing for final 0.3.0.
+The historical alpha ships a Windows portable ZIP and an **unsigned, development-only MSIX**, not a production signed installer. macOS was not implemented in that alpha; current macOS support and its verification boundaries are described above.
 
 ### Highlights
 
@@ -45,9 +99,9 @@ python -B packaging/windows.py --verify --output dist/windows
 python -B packaging/windows.py --inspect --output dist/windows
 ```
 
-Local builds and this alpha produce an **unsigned MSIX** and never install packages or modify certificate trust. Use the ZIP and [explicit Developer Mode registration procedure](docs/guide/install.md#windows-11) for notification testing. Do not double-click the unsigned MSIX expecting a production install, bypass signature checks or import certificates to trust it.
+Local builds and unsigned prereleases, including this beta and the historical alpha, produce an **unsigned MSIX** and never install packages or modify certificate trust. Use the ZIP and [explicit Developer Mode registration procedure](docs/guide/install.md#windows-11) for notification testing. Do not double-click the unsigned MSIX expecting a production install, bypass signature checks or import certificates to trust it.
 
-**Future production releases remain signed-gated.** Pass `--publisher` matching the code-signing certificate's exact subject. After moving verified unsigned artifacts and the matching source checkout to an isolated signing environment, repackage the existing payload with that publisher and updated build metadata, then sign it without recompiling or executing the application:
+**Stable production releases remain signed-gated.** Pass `--publisher` matching the code-signing certificate's exact subject. After moving verified unsigned artifacts and the matching source checkout to an isolated signing environment, repackage the existing payload with that publisher and updated build metadata, then sign it without recompiling or executing the application:
 
 ```powershell
 python -B packaging/windows.py --sign-existing dist/windows --output dist/windows-signed `
@@ -59,15 +113,15 @@ The certificate must already be in `CurrentUser\My`; its trusted chain and priva
 
 Stable release publication requires signed Windows artifacts and the combined release receipt. Its workflow requires protected-environment secrets `WINDOWS_SIGNING_PFX_BASE64` and `WINDOWS_SIGNING_PFX_PASSWORD`, and variables `WINDOWS_PUBLISHER` and `WINDOWS_TIMESTAMP_URL`. Windows build and signing run as separate steps, with signing credentials supplied only to signing. These external prerequisites are not satisfied by an unsigned development smoke.
 
-The alpha uses the explicitly unsigned prerelease path, is published with GitHub `prerelease=true` and `make_latest="false"`, and skips crates.io publication. Recovery reuses immutable release bytes rather than rebuilding or re-signing a partially published release. GitHub release notes include the matching version's [changelog](CHANGELOG.md) section.
+Prereleases use the explicitly unsigned path, GitHub `prerelease=true` and `make_latest="false"`, and skip crates.io publication. Recovery reuses immutable release bytes rather than rebuilding or re-signing a partially published release. GitHub release notes include the matching version's [changelog](CHANGELOG.md) section.
 
 ### Development checks
 
-Run `cargo test --all-targets --locked` and `python -B -m unittest discover -s packaging -p "test_*.py"` on Linux and Windows. Linux also needs `dbus-daemon` for isolated notification-service integration tests. The [Windows verification guide](docs/windows-verification.md) keeps the repeatable public fixture, native smoke and manual acceptance procedures in the repository for future releases; personal machine evidence belongs in a separately excluded private handoff, not public fixtures.
+Run `cargo test --all-targets --locked` and `python -B -m unittest discover -s packaging -p "test_*.py"` on the native target, plus `cargo clippy --all-targets --locked -- -D warnings`. Linux also needs `dbus-daemon` for isolated notification-service integration tests. [Windows verification](docs/windows-verification.md) and [macOS verification](docs/support.md#macos-verification) distinguish portable fixtures, native smoke and manual acceptance. Personal machine evidence belongs in a separately excluded private handoff, not public fixtures.
 
 During alpha preparation on Windows 11 build 26200, the committed native probe returned **23 taskbar pins with icons** and **two monitors**, and its isolated packaged GUI passed all six synthetic notification lifecycle stages. Manual fixture delivery/removal and isolated registration/cleanup were also exercised. Windows already allowed notification access; a first-consent prompt was not verified. See the [scoped workstation evidence](docs/windows-verification.md#alpha-workstation-evidence), not a blanket platform-acceptance claim. Physical WLED output, active media playback, permission revocation and interactive lock/disconnect transitions remain unverified; portable state tests do not replace those manual cases.
 
-Before promotion, follow the verification guide to repeat notification access in the registered Windows 11 GUI and confirm lighting remains disabled without a separate output grant. Test media playback with a participating player, permission changes and lock/disconnect transitions in a controlled session. Record skipped or blocked cases explicitly. Neither regression tests nor an unsigned native smoke establish a trusted public signature, complete cross-platform acceptance or macOS support.
+Before stable production acceptance, repeat notification access in the registered Windows 11 GUI and in the macOS application under separately approved Full Disk Access; confirm lighting remains disabled without a separate output grant. Test media/audio with an appropriate source, permission changes and lock/disconnect transitions in a controlled session. Record skipped or blocked cases explicitly. The beta retains these unverified boundaries; neither regressions nor unsigned/ad-hoc smoke establish a trusted public signature or complete cross-platform acceptance.
 
 ## 0.2.1 — Documentation and packaging
 

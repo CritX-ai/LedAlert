@@ -1717,9 +1717,10 @@ dependencies = [
 
 [[package]]
 name = "ledalert"
-version = "0.3.0-alpha"
+version = "0.3.0-beta"
 dependencies = [
  "anyhow",
+ "cc",
  "eframe",
  "futures-util",
  "png 0.18.1",

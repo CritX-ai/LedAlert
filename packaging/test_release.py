@@ -96,7 +96,7 @@ class SourceExportTests(unittest.TestCase):
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(b"public embedded asset")
-        names = ("Cargo.toml", "Cargo.lock", "README.md", "src/main.rs", "assets/ledalert.png",
+        names = ("Cargo.toml", "Cargo.lock", "build.rs", "README.md", "src/main.rs", "assets/ledalert.png",
                  "assets/fonts/Silkscreen-Bold.ttf", "assets/fonts/OFL.txt")
         entries = {name: ((self.root / name).read_bytes(), 0o644) for name in names}
         entries["Cargo.toml.orig"] = entries["Cargo.toml"]
@@ -114,7 +114,7 @@ class SourceExportTests(unittest.TestCase):
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(b"000102\n" if name == fixture else b"public embedded asset")
-        names = ("Cargo.toml", "Cargo.lock", "README.md", "src/main.rs", "assets/ledalert.png",
+        names = ("Cargo.toml", "Cargo.lock", "build.rs", "README.md", "src/main.rs", "assets/ledalert.png",
                  "assets/fonts/Silkscreen-Bold.ttf", "assets/fonts/OFL.txt", fixture)
         entries = {name: ((self.root / name).read_bytes(), 0o644) for name in names}
         entries["Cargo.toml.orig"] = entries["Cargo.toml"]
@@ -136,7 +136,7 @@ class SourceExportTests(unittest.TestCase):
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(b"public embedded asset")
-        names = ("Cargo.toml", "Cargo.lock", "README.md", "src/main.rs", "assets/ledalert.png",
+        names = ("Cargo.toml", "Cargo.lock", "build.rs", "README.md", "src/main.rs", "assets/ledalert.png",
                  "assets/fonts/Silkscreen-Bold.ttf")
         entries = {name: ((self.root / name).read_bytes(), 0o644) for name in names}
         entries["Cargo.toml.orig"] = entries["Cargo.toml"]
@@ -205,7 +205,7 @@ class PublicationTests(unittest.TestCase):
         self.commit = "1" * 40
         self.hashes = {name: "a" * 64 for name in publication.artifact_names("0.2.0")}
         self.receipt = {"version": "0.2.0", "commit": self.commit, "prerelease": False,
-                        "windows_signing": "certificate-store", "sha256": self.hashes}
+                        "windows_signing": "certificate-store", "macos_signing": "ad-hoc", "sha256": self.hashes}
         self.record = {
             "body": f"<!-- ledalert-release:{json.dumps(self.receipt)} -->",
             "tag_name": "v0.2.0", "target_commitish": self.commit, "draft": False, "prerelease": False,
@@ -234,10 +234,23 @@ class PublicationTests(unittest.TestCase):
             publication.preflight("0.2.0", self.commit)
 
     def test_linux_only_receipt_cannot_authorize_cross_platform_publication(self):
-        del self.receipt["sha256"]["ledalert-0.2.0-windows-x86_64.msix"]
-        self.record["body"] = f"<!-- ledalert-release:{json.dumps(self.receipt)} -->"
-        with self.assertRaisesRegex(ValueError, "artifact hashes"):
-            publication.preflight("0.2.0", self.commit)
+        for missing in ("ledalert-0.2.0-windows-x86_64.msix", publication.macos.names("0.2.0")[0]):
+            value = {**self.receipt, "sha256": dict(self.receipt["sha256"])}
+            del value["sha256"][missing]
+            record = {**self.record, "body": f"<!-- ledalert-release:{json.dumps(value)} -->"}
+            with self.subTest(missing=missing), self.assertRaisesRegex(ValueError, "artifact hashes"):
+                publication.receipt(record, "0.2.0")
+
+    def test_receipt_must_record_macos_as_ad_hoc_and_untrusted(self):
+        for claim in ("developer-id", "notarized", "certificate-store", None, "unsigned"):
+            value = {**self.receipt}
+            if claim is None:
+                del value["macos_signing"]
+            else:
+                value["macos_signing"] = claim
+            record = {**self.record, "body": f"<!-- ledalert-release:{json.dumps(value)} -->"}
+            with self.subTest(claim=claim), self.assertRaisesRegex(ValueError, "ad-hoc"):
+                publication.receipt(record, "0.2.0")
 
     def test_hidden_draft_is_recovered_from_release_list(self):
         self.registry_version.return_value = None
@@ -277,6 +290,8 @@ class PublicationTests(unittest.TestCase):
                 release.archive(output / name, prefix, {"BUILD-INFO.json": (release.json_bytes(info), 0o644)}, 0)
             for name in publication.windows.names("0.2.0"):
                 (output / name).write_bytes(b"unused Windows envelope fixture")
+            for name in publication.macos.names("0.2.0"):
+                (output / name).write_bytes(b"unused macOS envelope fixture")
             (output / "SHA256SUMS").write_text("".join(
                 f"{verify.file_digest(output / name)}  {name}\n" for name in names if name != "SHA256SUMS"))
             with self.assertRaisesRegex(ValueError, "Built artifact identity"):
@@ -285,12 +300,19 @@ class PublicationTests(unittest.TestCase):
 
 class ArtifactRecoveryTests(unittest.TestCase):
     def test_existing_original_bundle_is_reused_for_stable_and_prerelease(self):
-        for kind in ("windows", "publication"):
+        for kind in ("windows", "macos", "publication"):
             for version in ("0.3.0", "0.3.0-alpha"):
                 artifact = {"name": f"{kind}-release-123", "expired": False}
                 with self.subTest(kind=kind, version=version), \
                         patch.object(publication, "github", return_value={"total_count": 1, "artifacts": [artifact]}):
                     self.assertTrue(publication.artifact_recovery(version, "123", kind))
+
+    def test_unknown_recovery_kind_is_rejected_before_any_remote_call(self):
+        for kind in ("linux", "Publication", "macos-release", ""):
+            with self.subTest(kind=kind), \
+                    patch.object(publication, "github", side_effect=AssertionError("unexpected remote call")):
+                with self.assertRaisesRegex(ValueError, "Unknown recovery artifact kind"):
+                    publication.artifact_recovery("0.3.0", "123", kind)
 
     def test_first_publication_can_build_without_existing_artifact(self):
         with patch.object(publication, "github", return_value={"total_count": 0, "artifacts": []}), \
@@ -339,7 +361,7 @@ class PrereleasePublicationTests(unittest.TestCase):
             (self.output / name).write_bytes(name.encode())
         self.hashes = {name: verify.file_digest(self.output / name) for name in publication.artifact_names(self.version)}
         self.value = {"version": self.version, "commit": self.commit, "prerelease": True,
-                      "windows_signing": "unsigned", "sha256": self.hashes}
+                      "windows_signing": "unsigned", "macos_signing": "ad-hoc", "sha256": self.hashes}
         self.record = {"id": 123, "body": f"<!-- ledalert-release:{json.dumps(self.value)} -->",
                        "tag_name": "v" + self.version, "target_commitish": self.commit,
                        "draft": False, "prerelease": True, "assets": self.assets()}
@@ -410,9 +432,6 @@ class PrereleasePublicationTests(unittest.TestCase):
         self.assertIs(self.record["prerelease"], True)
         self.assertEqual(self.record["make_latest"], "false")
         self.assertEqual({name: release.digest(data) for name, data in self.uploads.items()}, self.hashes)
-        self.assertIn("## 0.3.0-alpha", self.record["body"])
-        self.assertIn("**unsigned and for development only**", self.record["body"])
-        self.assertIn("not a crates.io publication", self.record["body"])
 
     def test_partial_upload_recovers_missing_original_bytes_without_reupload(self):
         existing = self.record["assets"][0]

@@ -49,6 +49,8 @@ struct Ports {
     http: u16,
     udp: u16,
     loopback_only: bool,
+    #[cfg(test)]
+    alternate_http: Option<(Ipv4Addr, u16)>,
 }
 
 impl Ports {
@@ -56,6 +58,8 @@ impl Ports {
         http: 80,
         udp: 4048,
         loopback_only: false,
+        #[cfg(test)]
+        alternate_http: None,
     };
 
     fn validate(self, device: DeviceConfig) -> Result<()> {
@@ -68,6 +72,14 @@ impl Ports {
     }
 
     fn http_url(self, device: DeviceConfig, path: &str) -> String {
+        // Keep two synthetic device identities without requiring a privileged
+        // 127.0.0.2 interface alias on macOS. Production has no routing override.
+        #[cfg(test)]
+        if let Some((address, port)) = self.alternate_http
+            && address == device.address
+        {
+            return format!("http://{}:{port}{path}", Ipv4Addr::LOCALHOST);
+        }
         format!("http://{}:{}{path}", device.address, self.http)
     }
 }
@@ -784,6 +796,7 @@ mod tests {
                 http: listener.local_addr().unwrap().port(),
                 udp: udp.local_addr().unwrap().port(),
                 loopback_only: true,
+                alternate_http: None,
             };
             let state = Arc::new(HttpState {
                 requests: Mutex::new(Vec::new()),
@@ -1149,15 +1162,19 @@ mod tests {
     #[test]
     fn target_change_releases_old_target_before_refusing_failed_new_target() {
         let fixture = Fixture::new(1);
-        let output = fixture.output();
-        output.submit(fixture.device(1), &[[1, 2, 3]], true, None);
-        fixture.packet();
         let other = DeviceConfig {
             address: Ipv4Addr::new(127, 0, 0, 2),
             led_count: 1,
         };
-        let listener = TcpListener::bind((other.address, fixture.ports.http)).unwrap();
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
         listener.set_nonblocking(true).unwrap();
+        let output = WledOutput::start_with(Ports {
+            alternate_http: Some((other.address, listener.local_addr().unwrap().port())),
+            ..fixture.ports
+        })
+        .unwrap();
+        output.submit(fixture.device(1), &[[1, 2, 3]], true, None);
+        fixture.packet();
         output.submit(other, &[[4, 5, 6]], true, None);
         let mut accepted = None;
         until(|| {

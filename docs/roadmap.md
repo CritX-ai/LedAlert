@@ -4,15 +4,15 @@ LedAlert's job is simple: give desktop events a useful place in your room. Futur
 
 ## Current status
 
-**0.3.0-alpha is a GitHub prerelease adding Windows 11 x64** alongside Linux x86_64 and KDE Plasma on Wayland. Native notifications, media and lock detection, taskbar suggestions, display import and one mapped WLED RGB strip are implemented. Windows notification access requires package identity and consent; the alpha provides a portable ZIP and an unsigned development MSIX, not a production signed installer. It is not published to crates.io. See [release notes](../RELEASE.md), [Compatibility](support.md) and [Windows verification](windows-verification.md) for the remaining interactive acceptance work.
+**[0.3.0-beta](https://github.com/CritX-ai/LedAlert/releases/tag/v0.3.0-beta) adds native macOS 27 / Apple Silicon and Sidebar.app compatibility** alongside Windows 11 x64 and Linux/KDE. Display import, native application icons, notification lifecycle, lock inhibition and application media/activity markers are implemented. macOS notification access is permission-gated and uses a private metadata schema; app audio activity is not exact player play/pause state. See [release notes](../RELEASE.md), [Compatibility](support.md) and [Windows verification](windows-verification.md) for the exercised boundaries.
 
-## Planned 0.3.0 progression
+## Release boundary
 
-- **Alpha now:** Windows and Linux prerelease with repeatable portable regressions and explicit native Windows smoke tools. Trusted production Windows signing remains an external prerequisite.
-- **Beta next:** add macOS support and verify it on macOS, while continuing Linux and Windows regression checks. macOS support is planned, not available in the alpha; an editor that opens is not sufficient evidence of desktop integration.
-- **Final 0.3.0:** cross-platform polishing after beta, with verification evidence and production signing requirements satisfied.
-
-These are planned release stages, not claims that future platform support or acceptance is complete.
+- **Development beta:** GitHub-only, not the latest stable release and not published to crates.io. Cargo's unversioned installation route still selects the stable published crate.
+- **macOS trust:** the beta is ad-hoc signed, not Developer ID signed or notarized. A Developer ID–signed, notarized and stapled DMG is production work, not a beta feature. No Gatekeeper or permission changes are automated.
+- **Windows publication:** the beta MSIX is unsigned and development-only. Trusted signing, stable package/publisher identity and clean-machine installation/upgrade checks are required for the production route; the existing stable signing gate is not satisfied by this beta.
+- **Interactive acceptance:** live notification permission changes, active media/audio, lock transitions and physical lighting require controlled, separately authorized checks. Fixture success and CI do not imply complete desktop or device acceptance.
+- **Before stable 0.3.0:** complete trusted installers and final-byte verification, exercise the remaining live acceptance matrix, and document installation and upgrade without development-only setup. Homebrew Cask, WinGet and Microsoft Store distribution are optional later channels, not available beta installers.
 
 ## Future directions
 

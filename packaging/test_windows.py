@@ -17,6 +17,7 @@ import release
 import publish as publication
 import verify
 import windows
+from test_macos import fixture_bundle, write_fixture
 
 
 class ManifestTests(unittest.TestCase):
@@ -193,14 +194,14 @@ class ArtifactTests(unittest.TestCase):
         for name in ("assets/ledalert.png", "assets/fonts/Silkscreen-Bold.ttf", "assets/fonts/OFL.txt"):
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(b"public asset fixture\n")
+            path.write_bytes((release.ROOT / name).read_bytes() if name.endswith(".png") else b"public asset fixture\n")
             self.entries[name] = path.read_bytes()
         sources = release.source_files(self.root)
         self.info.update(version=version, source_commit=commit,
                          source_files={name: release.digest(path.read_bytes()) for name, path in sources.items()})
         self.entries["AppxManifest.xml"] = windows.manifest(version, "CN=LedAlert", self.root)
         self.package()
-        crate_sources = {"Cargo.toml", "Cargo.lock", "README.md", "assets/ledalert.png",
+        crate_sources = {"Cargo.toml", "Cargo.lock", "build.rs", "README.md", "assets/ledalert.png",
                          "assets/fonts/Silkscreen-Bold.ttf", "assets/fonts/OFL.txt"}
         crate = {name: (sources[name].read_bytes(), 0o644) for name in crate_sources}
         crate["Cargo.toml.orig"] = crate["Cargo.toml"]
@@ -212,6 +213,10 @@ class ArtifactTests(unittest.TestCase):
         source = {name: (path.read_bytes(), 0o644) for name, path in sources.items()}
         release.archive(self.output / names[0], f"ledalert-{version}-linux-x86_64", build_info, 0)
         release.archive(self.output / names[1], f"ledalert-{version}-source", {**source, **build_info}, 0)
+        notices = {name: data for name, data in self.entries.items()
+                   if name.startswith("licenses/") or name == "THIRD-PARTY-NOTICES.txt"}
+        self.mac_entries, self.mac_info = fixture_bundle(self.root, version, commit, notices)
+        write_fixture(self.output, version, self.mac_entries, self.mac_info)
         (self.output / "SHA256SUMS").write_text("".join(
             f"{verify.file_digest(self.output / name)}  {name}\n" for name in names if name != "SHA256SUMS"))
         return commit
@@ -229,6 +234,19 @@ class ArtifactTests(unittest.TestCase):
         commit = self.publication_bundle("0.3.0")
         with patch.object(release, "ROOT", self.root), self.assertRaisesRegex(ValueError, "signed MSIX"):
             publication.local_receipt(self.output, "0.3.0", commit)
+
+    def test_mixed_commit_macos_artifact_cannot_authorize_an_otherwise_valid_prerelease(self):
+        version = "0.3.0-alpha"
+        commit = self.publication_bundle(version)
+        with patch.object(release, "ROOT", self.root):
+            publication.local_receipt(self.output, version, commit)
+        self.mac_info["source_commit"] = "2" * 40
+        write_fixture(self.output, version, self.mac_entries, self.mac_info)
+        (self.output / "SHA256SUMS").write_text("".join(
+            f"{verify.file_digest(self.output / name)}  {name}\n"
+            for name in publication.artifact_names(version) if name != "SHA256SUMS"))
+        with patch.object(release, "ROOT", self.root), self.assertRaises(ValueError):
+            publication.local_receipt(self.output, version, commit)
 
     def test_wrong_architecture_fails_despite_consistent_hashes(self):
         executable = bytearray(self.entries["ledalert.exe"])

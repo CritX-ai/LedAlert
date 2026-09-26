@@ -1,9 +1,9 @@
 {
-  "release_label": "0.3.0-alpha · Windows 11 · Linux · WLED",
+  "release_label": "0.3.0-beta · macOS · Windows 11 · Linux · WLED",
   "templates": ["page.html"],
   "pages": [
-    {"source": "README.md", "id": "index", "path": "/", "title": "LedAlert", "description": "Give desktop notifications a place in your room with a native Windows 11 and Linux workbench for WLED lighting.", "group": "Start here", "kicker": "Spatial desktop notifications"},
-    {"source": "docs/guide/install.md", "id": "guide/install", "path": "/guide/install/", "title": "Install and connect", "description": "Install LedAlert with Cargo or a verified binary download.", "group": "Set up your room", "kicker": "01 · Install"},
+    {"source": "README.md", "id": "index", "path": "/", "title": "LedAlert", "description": "Give desktop notifications a place in your room with a native macOS, Windows 11 and Linux workbench for WLED lighting.", "group": "Start here", "kicker": "Spatial desktop notifications"},
+    {"source": "docs/guide/install.md", "id": "guide/install", "path": "/guide/install/", "title": "Install and connect", "description": "Verify and install the development beta, or use the stable Cargo release.", "group": "Set up your room", "kicker": "01 · Install"},
     {"source": "docs/guide/room.md", "id": "guide/room", "path": "/guide/room/", "title": "Draw your room", "description": "Set room dimensions and use optional bounded room outlines.", "group": "Set up your room", "kicker": "02 · Room"},
     {"source": "docs/guide/displays.md", "id": "guide/displays", "path": "/guide/displays/", "title": "Place your displays", "description": "Discover or manually arrange the displays that anchor your notification positions.", "group": "Set up your room", "kicker": "03 · Displays"},
     {"source": "docs/guide/strip.md", "id": "guide/strip", "path": "/guide/strip/", "title": "Map your strip", "description": "Trace one WLED RGB strip, set its direction and understand LED allocation.", "group": "Set up your room", "kicker": "04 · Strip"},
@@ -17,7 +17,7 @@
     {"source": "docs/support.md", "id": "support", "path": "/support/", "title": "Compatibility", "description": "Find out whether your desktop and lights are a match.", "group": "Reference", "kicker": "Supported setups"},
     {"source": "docs/windows-verification.md", "id": "windows-verification", "path": "/windows-verification/", "title": "Windows verification", "description": "Repeatable Windows regression checks, native smoke tools and explicit manual acceptance boundaries.", "group": "Reference", "kicker": "Windows verification"},
     {"source": "docs/roadmap.md", "id": "roadmap", "path": "/roadmap/", "title": "Roadmap", "description": "What LedAlert does today and where it could go next.", "group": "Project", "kicker": "What's next"},
-    {"source": "RELEASE.md", "id": "releases", "path": "/releases/", "title": "Release notes", "description": "What's new in LedAlert 0.3.0-alpha, how to try the GitHub prerelease and which checks remain.", "group": "Project", "kicker": "Release status"},
+    {"source": "RELEASE.md", "id": "releases", "path": "/releases/", "title": "Release notes", "description": "LedAlert 0.3.0-beta adds macOS and Sidebar support as a GitHub-only development prerelease, with explicit permission, signing and verification limits.", "group": "Project", "kicker": "Release status"},
     {"source": "CHANGELOG.md", "id": "changelog", "path": "/changelog/", "title": "Changelog", "description": "Features, fixes and configuration changes by version.", "group": "Project", "kicker": "Change history"},
     {"source": "SECURITY.md", "id": "security", "path": "/security/", "title": "Security", "description": "Report a security issue without sharing private data.", "group": "Project", "kicker": "Report responsibly"}
   ],

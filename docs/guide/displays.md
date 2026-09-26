@@ -4,7 +4,7 @@ Displays give rules a destination in the room. They are landmarks—not screen c
 
 ## Import or add a display
 
-A fresh room imports Windows or KDE displays automatically when discovery is available. Imported monitors stand upright with their aspect ratios and relative desktop arrangement.
+A fresh room imports macOS, Windows or KDE displays automatically when discovery is available. Imported monitors stand upright with their aspect ratios and relative desktop arrangement. macOS uses native display UUIDs and global point geometry; imports are a starting layout, not physical measurements.
 
 In **Displays**:
 

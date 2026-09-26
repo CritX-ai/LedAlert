@@ -64,11 +64,22 @@ Only bounded app metadata, urgency, notification ID and in-memory receipt time e
 
 Windows notification snapshots are bounded to **4,096** metadata records and the consumer queue to **64** events. Queue loss, ambiguous IDs, unavailable snapshots or permission loss invalidate the notification generation and clear uncertain lights. Native async queries have a **two-second** deadline. Media observations expire after **three seconds**.
 
+### macOS metadata
+
+- **Notifications:** read-only SQLite projects `delivered.app_id/list` membership (packed 16-byte UUIDs), `record.rec_id/app_id/uuid/delivered_date` and `app.app_id/identifier`. It never selects `record.data`, notification text, images or actions. A SQLite authorizer rejects payload-column or function redirection. Membership and metadata are read in one transaction, including current WAL data, with a **4,096-record** bound and a **200 ms** query deadline.
+- **Access and lifecycle:** Full Disk Access is separately required; it is a broad permission and is never granted automatically. The native store path/schema are private and verified only for macOS 27. Notification queries are separated by **250 ms**. Startup and recovery establish a silent baseline; replacements, removals, malformed/incomplete snapshots and queue loss use the shared generation discipline. Creation/delivery time gates replay across inhibition boundaries. Urgency is normal; a popup disappearing between snapshots cannot be reconstructed.
+- **App audio activity:** public CoreAudio process metadata supplies bundle identity and running-output state, polled every **750 ms**. This includes calls and silent streams, **not exact play/pause state**. No audio samples, microphone, media titles or volume controls are accessed. Enumeration is bounded to **256 processes** and **32 application identities**; stale observations clear markers after three seconds.
+- **Lock:** CoreGraphics console-session queries are separated by **250 ms**. Locked, absent/non-console, malformed or older-than-one-second observations inhibit lighting. Independent notification/audio/lock queries have **500 ms** deadlines and cannot block GUI drawing; a timed-out native operation is drained before another one is started.
+- **Sidebar and Dock:** while Sidebar is running, bounded pin metadata is read from its preferences. Hidden pins are excluded and a complete manual order is preserved; malformed active Sidebar state never falls back to Dock. Otherwise Dock `persistent-apps` supplies configured pins, not recents or a running-app inventory. Bundle identity must agree with the resolved local application; unresolved entries are omitted. Native names and icons use NSBundle/NSWorkspace without launching applications or writing preferences.
+- **Displays:** CoreGraphics provides active display UUIDs and one global point coordinate space. HiDPI geometry is not divided by per-screen scale factors; relative arrangement remains coherent.
+
+These private metadata formats may change independently of LedAlert. Unknown schemas and denied access are visible unavailable states, not successful empty snapshots. The [macOS verification scope](support.md#macos-verification) distinguishes live observation from owned fixtures and unexercised transitions.
+
 ### Limits and failures
 
-On Linux, notifications over **64 KiB** or with invalid app metadata are rejected. Consumer and pending-call queues hold at most **64** each, with a **five-second** reply deadline. On both platforms, lost, malformed or overflowing lifecycle observations clear tracked lights. Events older than **one second** at consumption are discarded.
+On Linux, notifications over **64 KiB** or with invalid app metadata are rejected. Consumer and pending-call queues hold at most **64** each, with a **five-second** reply deadline. On all platforms, lost, malformed or overflowing lifecycle observations clear tracked lights. Events older than **one second** at consumption are discarded.
 
-Services reconnect with bounded delays. **Settings → Integration status** shows errors; lock/output problems remain in the status bar. LedAlert does not bypass denied access. Discovery runs off the GUI thread; KDE's external display query has a three-second deadline and bounded response, and Windows native discovery has bounded topology buffers.
+Services reconnect with bounded delays. **Settings → Integration status** shows errors; lock/output problems remain in the status bar. LedAlert does not bypass denied access. Discovery runs off the GUI thread; KDE's external display query has a three-second deadline and bounded response, and native Windows/macOS discovery has bounded topology and application inventories.
 
 Application IDs are routing hints, not authenticated identities. LedAlert is ambient awareness—not a safety alarm or confidentiality boundary. Quieting releases control; it cannot guarantee darkness when WLED or another controller supplies an effect.
 
